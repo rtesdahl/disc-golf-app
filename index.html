@@ -1,12 +1,12 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>DG Pro: Score & Map</title>
+    <title>DG Pro: Score, Map & Settings</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        /* Mobile App Feel & Scroll Locking */
+        /* Mobile App Feel */
         html, body { 
             overscroll-behavior-y: contain; 
             position: fixed; 
@@ -17,21 +17,18 @@
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
         }
 
-
         .container { display: flex; flex-direction: column; height: 100%; max-width: 800px; margin: auto; background: white; }
         
-        /* Navigation Tabs */
+        /* Tab Navigation */
         .tab-bar { display: flex; background: #2c3e50; flex-shrink: 0; z-index: 2000; }
-        .tab-btn { flex: 1; padding: 15px; border: none; color: #bdc3c7; background: transparent; font-weight: bold; cursor: pointer; border-bottom: 3px solid transparent; transition: 0.2s; }
+        .tab-btn { flex: 1; padding: 15px 5px; border: none; color: #bdc3c7; background: transparent; font-weight: bold; font-size: 0.9rem; cursor: pointer; border-bottom: 3px solid transparent; }
         .tab-btn.active { color: white; border-bottom: 3px solid #27ae60; background: rgba(255,255,255,0.1); }
 
-
         .content-area { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; }
-        .page { display: none; height: 100%; flex-direction: column; }
+        .page { display: none; height: 100%; flex-direction: column; overflow-y: auto; }
         .page.active { display: flex; }
 
-
-        /* Scorecard Styles */
+        /* Scorecard & Table */
         .scroll-area { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
         table { width: 100%; border-collapse: collapse; table-layout: fixed; }
         th, td { border: 1px solid #dee2e6; padding: 10px; text-align: center; }
@@ -39,50 +36,47 @@
         tfoot td { position: sticky; bottom: 0; background: #2c3e50; color: white; font-weight: bold; z-index: 10; border-top: 2px solid #000; }
         
         .par-col { color: #3498db; font-weight: bold; cursor: pointer; text-decoration: underline dotted; }
-        .score-input { width: 90%; padding: 8px 0; text-align: center; font-size: 1.2rem; border: 1px solid #ccc; border-radius: 4px; transition: background-color 0.2s; }
-
-
-        /* Map Styles */
-        #map { flex: 1; width: 100%; background: #222; }
-        .map-controls { position: absolute; bottom: 25px; left: 15px; z-index: 1000; display: flex; flex-direction: column; gap: 10px; }
-        .map-btn { padding: 12px; background: white; border: 2px solid rgba(0,0,0,0.2); border-radius: 8px; font-weight: bold; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
-        .map-btn.active { background: #27ae60; color: white; border-color: #219150; }
-
+        .score-input { width: 90%; padding: 8px 0; text-align: center; font-size: 1.2rem; border: 1px solid #ccc; border-radius: 4px; }
 
         /* Scoring Colors */
-        .ace { background-color: #ffeb3b !important; color: black !important; } 
-        .double-birdie { background-color: #2ecc71 !important; color: white !important; } 
-        .birdie { background-color: #a9dfbf !important; color: black !important; } 
+        .ace { background-color: #ffeb3b !important; color: black; } 
+        .double-birdie { background-color: #2ecc71 !important; color: white; } 
+        .birdie { background-color: #a9dfbf !important; color: black; } 
         .par { background-color: #ffffff !important; } 
-        .bogey { background-color: #fadbd8 !important; color: black !important; } 
-        .double-bogey { background-color: #e74c3c !important; color: white !important; }
+        .bogey { background-color: #fadbd8 !important; color: black; } 
+        .double-bogey { background-color: #e74c3c !important; color: white; }
 
+        /* Map & Settings UI */
+        #map { flex: 1; width: 100%; background: #222; }
+        .settings-content { padding: 25px; }
+        .setting-item { margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+        .setting-item input { padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+        
+        #qrcode { margin: 30px auto; display: flex; justify-content: center; }
+        #qrcode img { max-width: 75vw; height: auto; border: 10px solid white; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
 
-        .hidden { display: none; }
-        .setup-form { padding: 20px; }
         .btn-start { background: #27ae60; color: white; padding: 15px; border: none; border-radius: 8px; font-weight: bold; width: 100%; margin-top: 15px; font-size: 1.1rem; cursor: pointer; }
+        .hidden { display: none; }
     </style>
 </head>
 <body>
-
 
 <div class="container">
     <div class="tab-bar">
         <button class="tab-btn active" onclick="showPage('scorePage', this)">SCORE</button>
         <button class="tab-btn" onclick="showPage('mapPage', this)">MAP</button>
+        <button class="tab-btn" onclick="showPage('settingsPage', this)">SETTINGS</button>
     </div>
-
 
     <div class="content-area">
         <div id="scorePage" class="page active">
-            <div id="setup" class="setup-form">
+            <div id="setup" style="padding: 20px;">
                 <h3 style="margin-top:0">Round Setup</h3>
-                <label>Number of Players (1-6):</label>
-                <input type="number" id="count" min="1" max="6" value="1" oninput="drawNameInputs()" style="width:60px; padding:8px; margin-left:10px;">
-                <div id="nameInputs" style="margin-top:15px;"></div>
+                <label>Players: </label>
+                <input type="number" id="count" min="1" max="6" value="1" oninput="drawNameInputs()" style="width:60px; padding:8px;">
+                <div id="nameInputs" style="margin-top:20px;"></div>
                 <button class="btn-start" onclick="initGame()">Start Game</button>
             </div>
-            
             <div id="game" class="scroll-area hidden">
                 <table>
                     <thead><tr id="hRow"><th>Hole</th><th style="width:50px">Par</th></tr></thead>
@@ -90,50 +84,73 @@
                     <tfoot><tr id="fRow"><td colspan="2">TOTAL</td></tr></tfoot>
                 </table>
                 <div style="padding:20px; text-align:center;">
-                    <button onclick="if(confirm('Start fresh? All scores will be cleared.')) location.reload()" style="padding:12px 25px; background:#666; color:white; border:none; border-radius:6px; font-weight:bold;">New Game / Reset</button>
+                    <button onclick="if(confirm('Reset Game?')) location.reload()" style="padding:10px 20px; background:#666; color:white; border:none; border-radius:5px;">Reset Game</button>
                 </div>
             </div>
         </div>
 
-
         <div id="mapPage" class="page">
             <div id="map"></div>
-            <div class="map-controls">
-                <button id="btnFollow" class="map-btn active" onclick="setMapMode('follow')">Mode: Follow</button>
-                <button id="btnFree" class="map-btn" onclick="setMapMode('free')">Mode: Free</button>
-                <button class="map-btn" onclick="centerOnMe()">📍 Recenter</button>
+        </div>
+
+        <div id="settingsPage" class="page">
+            <div class="settings-content">
+                <h3>Location Services</h3>
+                <div class="setting-item">
+                    <span>High Precision GPS</span>
+                    <input type="checkbox" id="setHighAcc" onchange="updateGPSConfig()">
+                </div>
+                <div class="setting-item">
+                    <span>Update Interval (seconds)</span>
+                    <input type="number" id="setInterval" min="5" max="30" value="10" onchange="updateGPSConfig()">
+                </div>
+                
+                <hr style="border:0; border-top:1px solid #ddd; margin:40px 0;">
+                <h3 style="text-align:center">Share Round</h3>
+                <div id="qrcode"></div>
+                <p style="text-align:center; font-size:0.8rem; color:#666;">Scan to open this app on another device</p>
             </div>
         </div>
     </div>
 </div>
 
-
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script>
     const holeList = ["1","2","3","4","5","6","7","8","8A","8B","8C","9","10","11","12","13","14","15","16","17","18","19","20","21","22","23","24","25","26","27"];
-    let map, userMarker, userCircle;
-    let mapMode = 'follow'; 
-    let lastPos = null;
+    let map, userMarker, userCircle, watchId = null;
+    let lastPos = [34.6141, -120.1925]; // Default center
 
-
-    // Prevent Browser pull-to-refresh
+    // Scroll Logic
     document.addEventListener('touchmove', function(e) {
         if (e.target.closest('.scroll-area') || e.target.closest('#map')) return;
         e.preventDefault(); 
     }, { passive: false });
-
 
     function showPage(id, btn) {
         document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
         document.getElementById(id).classList.add('active');
         btn.classList.add('active');
-        if (id === 'mapPage' && map) {
-            setTimeout(() => { map.invalidateSize(); if(lastPos && mapMode === 'follow') map.panTo(lastPos); }, 200);
+        
+        // Battery Saver: Only run GPS on Map tab
+        if (id === 'mapPage') {
+            startGPS();
+            if(map) setTimeout(() => map.invalidateSize(), 200);
+        } else {
+            stopGPS();
+        }
+
+        if (id === 'settingsPage' && !document.querySelector('#qrcode img')) {
+            new QRCode(document.getElementById("qrcode"), { 
+                text: window.location.href, 
+                width: 256, height: 256,
+                correctLevel : QRCode.CorrectLevel.H
+            });
         }
     }
 
-
+    // --- Scoring Logic ---
     function drawNameInputs() {
         const n = document.getElementById('count').value;
         const container = document.getElementById('nameInputs');
@@ -143,20 +160,17 @@
         }
     }
 
-
     function initGame() {
         const n = document.getElementById('count').value;
         const hRow = document.getElementById('hRow');
         const fRow = document.getElementById('fRow');
         const sBody = document.getElementById('sBody');
 
-
         for(let i=1; i<=n; i++) {
             let name = document.getElementById(`name${i}`).value || `P${i}`;
             hRow.innerHTML += `<th>${name}</th>`;
             fRow.innerHTML += `<td id="tot${i}">0</td>`;
         }
-
 
         holeList.forEach((h, idx) => {
             let tr = document.createElement('tr');
@@ -167,20 +181,17 @@
             sBody.appendChild(tr);
         });
 
-
         document.getElementById('setup').classList.add('hidden');
         document.getElementById('game').classList.remove('hidden');
         initMap();
     }
 
-
     function editPar(idx) {
         const cell = document.getElementById(`p-${idx}`);
         const cur = cell.innerText;
-        cell.innerHTML = `<input type="number" value="${cur}" style="width:35px; text-align:center; font-size:1rem;" onblur="savePar(${idx}, this.value)">`;
+        cell.innerHTML = `<input type="number" value="${cur}" style="width:35px; text-align:center;" onblur="savePar(${idx}, this.value)">`;
         cell.querySelector('input').focus();
     }
-
 
     function savePar(idx, val) {
         const cell = document.getElementById(`p-${idx}`);
@@ -188,11 +199,9 @@
         document.querySelectorAll(`input[data-h="${idx}"]`).forEach(inp => applyColor(inp));
     }
 
-
     function applyColor(el) {
         const val = parseInt(el.value);
-        const parCell = document.getElementById(`p-${el.dataset.h}`);
-        const par = parseInt(parCell.innerText) || 3;
+        const par = parseInt(document.getElementById(`p-${el.dataset.h}`).innerText) || 3;
         el.className = "score-input";
         if (val > 0) {
             if (val === 1) el.classList.add('ace');
@@ -205,7 +214,6 @@
         calc();
     }
 
-
     function calc() {
         const n = document.getElementById('count').value;
         for(let i=1; i<=n; i++) {
@@ -215,64 +223,42 @@
         }
     }
 
-
+    // --- Map & GPS Logic ---
     function initMap() {
-        const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-            maxZoom: 19, attribution: 'Tiles &copy; Esri'
-        });
+        const sat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, attribution: 'Esri' });
+        map = L.map('map', { center: lastPos, zoom: 18, layers: [sat], zoomControl: false });
+    }
 
+    function startGPS() {
+        if (watchId || !navigator.geolocation) return;
+        const highAcc = document.getElementById('setHighAcc').checked;
+        watchId = navigator.geolocation.watchPosition(pos => {
+            lastPos = [pos.coords.latitude, pos.coords.longitude];
+            updateMapDisplay(pos.coords.accuracy);
+        }, err => console.warn(err), { enableHighAccuracy: highAcc, timeout: 10000 });
+    }
 
-        map = L.map('map', {
-            center: [34.6141, -120.1925], // Fallback center
-            zoom: 18,
-            layers: [satellite],
-            zoomControl: false
-        });
+    function stopGPS() {
+        if (watchId) { navigator.geolocation.clearWatch(watchId); watchId = null; }
+    }
 
-
-        if (navigator.geolocation) {
-            navigator.geolocation.watchPosition(onLocationUpdate, (e) => console.warn(e), {
-                enableHighAccuracy: true,
-                timeout: 10000,
-                maximumAge: 0
-            });
+    function updateGPSConfig() {
+        if (document.getElementById('mapPage').classList.contains('active')) {
+            stopGPS(); startGPS();
         }
     }
 
-
-    function onLocationUpdate(pos) {
-        const lat = pos.coords.latitude;
-        const lng = pos.coords.longitude;
-        const acc = pos.coords.accuracy;
-        lastPos = [lat, lng];
-
-
+    function updateMapDisplay(acc) {
+        if (!map) return;
         if (!userMarker) {
-            userMarker = L.circleMarker(lastPos, { radius: 9, color: 'white', fillColor: '#3498db', fillOpacity: 1, weight: 3 }).addTo(map);
-            userCircle = L.circle(lastPos, { radius: acc, weight: 1, fillOpacity: 0.1, color: '#3498db' }).addTo(map);
-            map.setView(lastPos, 18);
+            userMarker = L.circleMarker(lastPos, { radius: 8, color: 'white', fillColor: '#3498db', fillOpacity: 1, weight: 2 }).addTo(map);
+            userCircle = L.circle(lastPos, { radius: acc, weight: 1, fillOpacity: 0.1 }).addTo(map);
         } else {
             userMarker.setLatLng(lastPos);
             userCircle.setLatLng(lastPos).setRadius(acc);
         }
-
-
-        if (mapMode === 'follow') map.panTo(lastPos);
+        map.panTo(lastPos);
     }
-
-
-    function setMapMode(mode) {
-        mapMode = mode;
-        document.getElementById('btnFollow').classList.toggle('active', mode === 'follow');
-        document.getElementById('btnFree').classList.toggle('active', mode === 'free');
-        if (mode === 'follow' && lastPos) map.panTo(lastPos);
-    }
-
-
-    function centerOnMe() {
-        if (lastPos) map.setView(lastPos, 18);
-    }
-
 
     drawNameInputs();
 </script>
