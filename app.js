@@ -15,7 +15,6 @@ window.onload = () => {
     drawNameInputs();
     window.onbeforeunload = (e) => { 
         if(currentGameState) {
-            // Standard browser warning for unsaved changes
             e.preventDefault();
             return "Game in progress. Exit?"; 
         }
@@ -136,8 +135,6 @@ function saveToHistoryAndReset() {
         const h = JSON.parse(localStorage.getItem('dg_history') || "[]");
         h.push(currentGameState);
         localStorage.setItem('dg_history', JSON.stringify(h));
-        
-        // Disable the beforeunload guard before reloading
         currentGameState = null; 
         localStorage.removeItem('dg_active_session');
         location.reload();
