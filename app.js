@@ -46,14 +46,12 @@ function initNewGame() {
     const pCount = document.getElementById('count').value;
     const playerNames = [];
     for(let i=1; i<=pCount; i++) playerNames.push(document.getElementById(`name${i}`).value || `P${i}`);
-
     currentGameState = {
         courseId: WALLER_PARK.id, courseName: WALLER_PARK.name,
         startTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         players: playerNames, pars: [...WALLER_PARK.pars], scores: {}
     };
     playerNames.forEach(p => currentGameState.scores[p] = new Array(WALLER_PARK.holes.length).fill(0));
-    
     startRoundUI();
 }
 
@@ -86,7 +84,7 @@ function renderTable() {
     sBody.innerHTML = '';
 
     currentGameState.players.forEach((p, i) => {
-        hRow.innerHTML += `<th class="player-name-hdr" onclick="saveIndividualPrompt('${p}', ${i+1})">${p}</th>`;
+        hRow.innerHTML += `<th onclick="saveIndividualPrompt('${p}', ${i+1})">${p}</th>`;
         fRow.innerHTML += `<td id="tot${i+1}">0</td>`;
     });
 
@@ -222,5 +220,4 @@ function drawNameInputs() {
     c.innerHTML = "";
     for(let i=1; i<=n; i++) c.innerHTML += `<input type="text" id="name${i}" placeholder="Player ${i}" style="width:90%; padding:10px; margin-top:5px;">`;
 }
-
 function updateGPSConfig() { if(document.getElementById('mapPage').classList.contains('active')) { stopGPS(); startGPS(); } }
