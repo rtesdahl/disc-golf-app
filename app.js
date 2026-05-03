@@ -13,7 +13,13 @@ let mapMode = 'follow';
 window.onload = () => {
     checkActiveSession();
     drawNameInputs();
-    window.onbeforeunload = (e) => { if(currentGameState) return "Game in progress. Exit?"; };
+    window.onbeforeunload = (e) => { 
+        if(currentGameState) {
+            // Standard browser warning for unsaved changes
+            e.preventDefault();
+            return "Game in progress. Exit?"; 
+        }
+    };
 };
 
 function checkActiveSession() {
@@ -125,6 +131,19 @@ function calc() {
     });
 }
 
+function saveToHistoryAndReset() {
+    if(confirm("Archive FULL round and reset?")) {
+        const h = JSON.parse(localStorage.getItem('dg_history') || "[]");
+        h.push(currentGameState);
+        localStorage.setItem('dg_history', JSON.stringify(h));
+        
+        // Disable the beforeunload guard before reloading
+        currentGameState = null; 
+        localStorage.removeItem('dg_active_session');
+        location.reload();
+    }
+}
+
 function editPar(idx) {
     const cell = document.getElementById(`p-${idx}`);
     const cur = cell.innerText;
@@ -177,16 +196,6 @@ function stopGPS() { if(watchId) { navigator.geolocation.clearWatch(watchId); wa
 function setMapMode(m) { mapMode = m; if(m === 'follow') centerOnMe(); }
 function centerOnMe() { if(lastPos && map) map.panTo(lastPos); }
 
-function saveToHistoryAndReset() {
-    if(confirm("Archive FULL round and reset?")) {
-        const h = JSON.parse(localStorage.getItem('dg_history') || "[]");
-        h.push(currentGameState);
-        localStorage.setItem('dg_history', JSON.stringify(h));
-        localStorage.removeItem('dg_active_session');
-        location.reload();
-    }
-}
-
 function renderHistory() {
     const h = JSON.parse(localStorage.getItem('dg_history') || "[]");
     document.getElementById('historyList').innerHTML = h.map((game, i) => `
@@ -209,10 +218,12 @@ function restoreFromHistory(idx) {
 }
 
 function clearHistory() { if(confirm("Clear all?")) { localStorage.clear(); location.reload(); } }
-function confirmNewGame() { if(confirm("Wipe active game?")) { localStorage.removeItem('dg_active_session'); location.reload(); } }
+function confirmNewGame() { if(confirm("Wipe active game?")) { currentGameState = null; localStorage.removeItem('dg_active_session'); location.reload(); } }
+
 function drawNameInputs() {
     const n = document.getElementById('count').value, c = document.getElementById('nameInputs');
     c.innerHTML = "";
     for(let i=1; i<=n; i++) c.innerHTML += `<input type="text" id="name${i}" placeholder="Player ${i}" style="width:90%; padding:10px; margin-top:5px;">`;
 }
+
 function updateGPSConfig() { if(document.getElementById('mapPage').classList.contains('active')) { stopGPS(); startGPS(); } }
