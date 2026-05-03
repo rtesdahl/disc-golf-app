@@ -18,29 +18,33 @@ html, body {
 .page { display: none; height: 100%; flex-direction: column; overflow-y: auto; }
 .page.active { display: flex; }
 
-/* Table and Scrolling */
+/* Table Layout */
 .table-wrapper { flex: 1; overflow: auto; -webkit-overflow-scrolling: touch; }
 table { border-collapse: collapse; width: 100%; table-layout: auto; }
 th, td { border: 1px solid #dee2e6; padding: 10px; text-align: center; background: white; }
 
-/* Fixed widths for Hole and Par to give space to players */
-th:nth-child(1), td:nth-child(1) { width: 45px; font-weight: bold; background: #f8f9fa; }
-th:nth-child(2), td:nth-child(2) { width: 40px; background: #f8f9fa; }
+/* Labels (Hole/Par) - Constant width */
+th:nth-child(1), td:nth-child(1) { width: 45px; min-width: 45px; font-weight: bold; background: #f8f9fa; }
+th:nth-child(2), td:nth-child(2) { width: 40px; min-width: 40px; background: #f8f9fa; }
 
-/* Player columns: minimum width to prevent squishing, but auto-grow to fill space */
-th:not(:nth-child(-n+2)), td:not(:nth-child(-n+2)) { min-width: 75px; }
+/* ALL Player Columns - Dynamic width */
+/* This selects every column starting from the 3rd one */
+th:nth-child(n+3), td:nth-child(n+3) { 
+    min-width: 75px; 
+    width: auto; /* Allows them to grow and share space equally */
+}
 
 /* Sticky Header & Footer */
 thead th { position: sticky; top: 0; z-index: 10; background: #34495e; color: white; }
 tfoot td { position: sticky; bottom: 0; z-index: 10; background: #2c3e50; color: white; font-weight: bold; border-top: 2px solid #000; }
 
-/* Visual Lane & Darker Zebra Striping */
-tbody tr:nth-child(even) td { background-color: #ededed; } /* Darker grey */
-tbody tr:focus-within td { background-color: #e3f2fd !important; }
+/* Lane Highlighting & Zebra Striping */
+tbody tr:nth-child(even) td { background-color: #ededed; } 
+tbody tr:focus-within td { background-color: #bbdefb !important; } /* Stronger blue for sunlight visibility */
 
 /* Score Inputs */
-.score-input { width: 90%; padding: 8px 0; text-align: center; font-size: 1.2rem; border: 1px solid #ccc; border-radius: 4px; background: transparent; }
-.score-input::placeholder { color: #aaa; font-weight: normal; }
+.score-input { width: 95%; padding: 8px 0; text-align: center; font-size: 1.2rem; border: 1px solid #ccc; border-radius: 4px; background: transparent; }
+.score-input::placeholder { color: #888; font-weight: normal; }
 
 /* Score Colors */
 .ace { background-color: #ffeb3b !important; color: black; }
@@ -54,6 +58,7 @@ tbody tr:focus-within td { background-color: #e3f2fd !important; }
 #map { flex: 1; width: 100%; background: #222; }
 .map-controls { position: absolute; bottom: 25px; left: 15px; z-index: 1000; display: flex; flex-direction: column; gap: 10px; }
 .map-btn { padding: 12px; background: white; border: 2px solid rgba(0,0,0,0.2); border-radius: 8px; font-weight: bold; }
+.map-btn.active { background: #27ae60; color: white; }
 
 .settings-content { padding: 20px; }
 .history-card { padding: 12px; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 10px; background: #fff; cursor: pointer; border-left: 5px solid #3498db; }
