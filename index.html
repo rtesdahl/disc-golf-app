@@ -3,51 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>DG Pro: Score, Map & Live Par</title>
+    <title>DG Pro: Persistent Scorer</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <style>
-        html, body { overscroll-behavior-y: contain; position: fixed; overflow: hidden; width: 100%; height: 100%; margin: 0; padding: 0; background: #f0f2f5; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-        .container { display: flex; flex-direction: column; height: 100%; max-width: 800px; margin: auto; background: white; }
-        
-        .tab-bar { display: flex; background: #2c3e50; flex-shrink: 0; z-index: 2000; }
-        .tab-btn { flex: 1; padding: 15px 5px; border: none; color: #bdc3c7; background: transparent; font-weight: bold; font-size: 0.9rem; cursor: pointer; border-bottom: 3px solid transparent; }
-        .tab-btn.active { color: white; border-bottom: 3px solid #27ae60; background: rgba(255,255,255,0.1); }
-
-        .content-area { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; }
-        .page { display: none; height: 100%; flex-direction: column; overflow-y: auto; }
-        .page.active { display: flex; }
-
-        .scroll-area { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
-        table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-        th, td { border: 1px solid #dee2e6; padding: 10px; text-align: center; }
-        thead th { position: sticky; top: 0; background: #34495e; color: white; z-index: 10; }
-        tfoot td { position: sticky; bottom: 0; background: #2c3e50; color: white; font-weight: bold; z-index: 10; border-top: 2px solid #000; font-size: 0.9rem; }
-        
-        .player-name-hdr { cursor: pointer; text-decoration: underline; color: #ecf0f1; font-size: 0.8rem; }
-        .par-col { color: #3498db; font-weight: bold; cursor: pointer; }
-        .score-input { width: 90%; padding: 8px 0; text-align: center; font-size: 1.2rem; border: 1px solid #ccc; border-radius: 4px; }
-
-        /* Colors */
-        .ace { background-color: #ffeb3b !important; color: black; } 
-        .double-birdie { background-color: #2ecc71 !important; color: white; } 
-        .birdie { background-color: #a9dfbf !important; color: black; } 
-        .par { background-color: #ffffff !important; } 
-        .bogey { background-color: #fadbd8 !important; color: black; } 
-        .double-bogey { background-color: #e74c3c !important; color: white; }
-
-        #map { flex: 1; width: 100%; background: #222; }
-        .map-controls { position: absolute; bottom: 25px; left: 15px; z-index: 1000; display: flex; flex-direction: column; gap: 10px; }
-        .map-btn { padding: 12px; background: white; border: 2px solid rgba(0,0,0,0.2); border-radius: 8px; font-weight: bold; cursor: pointer; }
-        .map-btn.active { background: #27ae60; color: white; }
-
-        .settings-content { padding: 25px; }
-        .history-item { padding: 10px; border: 1px solid #ddd; border-radius: 5px; margin-top: 10px; background: #f9f9f9; font-size: 0.9rem; }
-        #qrcode { margin: 20px auto; display: flex; justify-content: center; }
-        #qrcode img { max-width: 60vw; height: auto; border: 5px solid white; }
-
-        .btn-start { background: #27ae60; color: white; padding: 15px; border: none; border-radius: 8px; font-weight: bold; width: 100%; margin-top: 15px; }
-        .hidden { display: none; }
-    </style>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
@@ -60,20 +18,32 @@
 
     <div class="content-area">
         <div id="scorePage" class="page active">
-            <div id="setup" style="padding: 20px;">
-                <h3>Round Setup</h3>
-                <input type="number" id="count" min="1" max="6" value="1" oninput="drawNameInputs()" style="width:50px; padding:5px;"> Players
-                <div id="nameInputs" style="margin-top:15px;"></div>
-                <button class="btn-start" onclick="initGame()">Start Game</button>
+            <div id="setupContainer" class="setup-form">
+                <div id="resumeSection" class="hidden">
+                    <h3 id="resumeTitle">Game in Progress</h3>
+                    <button class="btn-start" onclick="resumeGame()">Resume Active Game</button>
+                    <button class="btn-reset" onclick="confirmNewGame()">Discard & New Game</button>
+                </div>
+                
+                <div id="newGameSection">
+                    <h3>New Round</h3>
+                    <label>Number of Players: </label>
+                    <input type="number" id="count" min="1" max="10" value="1" oninput="drawNameInputs()">
+                    <div id="nameInputs"></div>
+                    <button class="btn-start" onclick="initNewGame()">Start Game</button>
+                </div>
             </div>
-            <div id="game" class="scroll-area hidden">
-                <table>
-                    <thead><tr id="hRow"><th>Hole</th><th style="width:45px">Par</th></tr></thead>
-                    <tbody id="sBody"></tbody>
-                    <tfoot><tr id="fRow"><td colspan="2">TOTAL</td></tr></tfoot>
-                </table>
-                <div style="padding:20px; text-align:center;">
-                    <button onclick="if(confirm('Reset Game?')) location.reload()" style="padding:10px 20px; background:#666; color:white; border:none; border-radius:5px;">Reset Game</button>
+
+            <div id="gameContainer" class="hidden">
+                <div class="table-wrapper">
+                    <table id="scoreTable">
+                        <thead><tr id="hRow"></tr></thead>
+                        <tbody id="sBody"></tbody>
+                        <tfoot><tr id="fRow"></tr></tfoot>
+                    </table>
+                </div>
+                <div class="game-footer">
+                    <button class="btn-archive" onclick="saveToHistoryAndReset()">Finish & Archive Round</button>
                 </div>
             </div>
         </div>
@@ -81,24 +51,24 @@
         <div id="mapPage" class="page">
             <div id="map"></div>
             <div class="map-controls">
-                <button id="btnFollow" class="map-btn active" onclick="setMapMode('follow')">Mode: Follow</button>
-                <button id="btnFree" class="map-btn" onclick="setMapMode('free')">Mode: Free</button>
-                <button class="map-btn" onclick="centerOnMe()">📍 Recenter</button>
+                <button id="btnFollow" class="map-btn active" onclick="setMapMode('follow')">Follow</button>
+                <button id="btnFree" class="map-btn" onclick="setMapMode('free')">Free</button>
+                <button class="map-btn" onclick="centerOnMe()">📍 Center</button>
             </div>
         </div>
 
         <div id="settingsPage" class="page">
             <div class="settings-content">
-                <h3>Settings</h3>
-                <div style="display:flex; justify-content:space-between; margin-bottom:15px;">
+                <h3>Location Settings</h3>
+                <div class="setting-item">
                     <span>High Precision GPS</span>
                     <input type="checkbox" id="setHighAcc" onchange="updateGPSConfig()">
                 </div>
                 <hr>
-                <h3>Saved History</h3>
-                <div id="historyList">No saved rounds yet.</div>
-                <button onclick="clearHistory()" style="margin-top:10px; font-size:0.7rem; background:none; border:1px solid #ccc; color:#888;">Clear History</button>
-                <hr style="margin:30px 0;">
+                <h3>Game History</h3>
+                <p style="font-size: 0.8rem; color: #666;">Tap a round to reload it into the scorecard.</p>
+                <div id="historyList"></div>
+                <button class="btn-danger" onclick="clearHistory()">Clear All Data</button>
                 <div id="qrcode"></div>
             </div>
         </div>
@@ -107,138 +77,6 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-<script>
-    const holeList = ["1","2","3","4","5","6","7","8","8A","8B","8C","9","10","11","12","13","14","15","16","17","18","19","20","21","22","23","24","25","26","27"];
-    let map, userMarker, watchId = null;
-    let lastPos = [34.6141, -120.1925];
-    let mapMode = 'follow';
-
-    function showPage(id, btn) {
-        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-        document.getElementById(id).classList.add('active');
-        btn.classList.add('active');
-        if (id === 'mapPage') {
-            startGPS();
-            if(map) setTimeout(() => { map.invalidateSize(); if(mapMode === 'follow') centerOnMe(); }, 200);
-        } else { stopGPS(); }
-        if (id === 'settingsPage') {
-            loadHistory();
-            if (!document.querySelector('#qrcode img')) {
-                new QRCode(document.getElementById("qrcode"), { text: window.location.href, width: 180, height: 180 });
-            }
-        }
-    }
-
-    function initGame() {
-        const n = document.getElementById('count').value;
-        const hRow = document.getElementById('hRow'), fRow = document.getElementById('fRow'), sBody = document.getElementById('sBody');
-        for(let i=1; i<=n; i++) {
-            let name = document.getElementById(`name${i}`).value || `P${i}`;
-            hRow.innerHTML += `<th class="player-name-hdr" onclick="savePlayerRound('${name}', ${i})">${name}</th>`;
-            fRow.innerHTML += `<td id="tot${i}">0</td>`;
-        }
-        holeList.forEach((h, idx) => {
-            let tr = document.createElement('tr');
-            tr.innerHTML = `<td style="font-weight:bold; background:#f8f9fa;">${h}</td><td class="par-col" id="p-${idx}" onclick="editPar(${idx})">3</td>`;
-            for(let i=1; i<=n; i++) tr.innerHTML += `<td><input type="number" class="score-input" data-p="${i}" data-h="${idx}" placeholder="0" oninput="applyColor(this)"></td>`;
-            sBody.appendChild(tr);
-        });
-        document.getElementById('setup').classList.add('hidden');
-        document.getElementById('game').classList.remove('hidden');
-        initMap();
-    }
-
-    function calc() {
-        const n = document.getElementById('count').value;
-        for(let i=1; i<=n; i++) {
-            let actualSum = 0;
-            let relativeParSum = 0;
-            
-            document.querySelectorAll(`input[data-p="${i}"]`).forEach(inp => {
-                const val = parseInt(inp.value) || 0;
-                if (val > 0) {
-                    actualSum += val;
-                    const hIdx = inp.getAttribute('data-h');
-                    const parVal = parseInt(document.getElementById(`p-${hIdx}`).innerText) || 3;
-                    relativeParSum += parVal;
-                }
-            });
-
-            const diff = actualSum - relativeParSum;
-            const diffText = diff === 0 ? "E" : (diff > 0 ? `+${diff}` : diff);
-            document.getElementById(`tot${i}`).innerHTML = actualSum === 0 ? "0" : `${actualSum}<br><span style="font-size:0.7rem; color:#bdc3c7;">(${diffText})</span>`;
-        }
-    }
-
-    function applyColor(el) {
-        const val = parseInt(el.value);
-        const par = parseInt(document.getElementById(`p-${el.dataset.h}`).innerText) || 3;
-        el.className = "score-input";
-        if (val > 0) {
-            if (val === 1) el.classList.add('ace');
-            else if (val <= par - 2) el.classList.add('double-birdie');
-            else if (val === par - 1) el.classList.add('birdie');
-            else if (val === par) el.classList.add('par');
-            else if (val === par + 1) el.classList.add('bogey');
-            else if (val >= par + 2) el.classList.add('double-bogey');
-        }
-        calc();
-    }
-
-    function savePlayerRound(name, pIndex) {
-        const cell = document.getElementById(`tot${pIndex}`);
-        const totalText = cell.innerText.split('\n')[0];
-        if(totalText == "0") return;
-        if(confirm(`Save round for ${name}? Total: ${totalText}`)) {
-            const history = JSON.parse(localStorage.getItem('dgHistory') || "[]");
-            history.push({ date: new Date().toLocaleDateString(), name: name, total: totalText });
-            localStorage.setItem('dgHistory', JSON.stringify(history));
-        }
-    }
-
-    function loadHistory() {
-        const history = JSON.parse(localStorage.getItem('dgHistory') || "[]");
-        const list = document.getElementById('historyList');
-        list.innerHTML = history.length ? history.map(r => `<div class="history-item"><b>${r.date}</b>: ${r.name} (${r.total})</div>`).reverse().join("") : "No history.";
-    }
-
-    function clearHistory() { if(confirm("Wipe history?")) { localStorage.removeItem('dgHistory'); loadHistory(); } }
-    function editPar(idx) { 
-        const cell = document.getElementById(`p-${idx}`);
-        const cur = cell.innerText;
-        cell.innerHTML = `<input type="number" value="${cur}" style="width:35px;" onblur="savePar(${idx}, this.value)">`;
-        cell.querySelector('input').focus();
-    }
-    function savePar(idx, val) { 
-        document.getElementById(`p-${idx}`).innerText = val || 3;
-        document.querySelectorAll(`input[data-h="${idx}"]`).forEach(inp => applyColor(inp));
-    }
-    function drawNameInputs() {
-        const n = document.getElementById('count').value;
-        const container = document.getElementById('nameInputs');
-        container.innerHTML = "";
-        for(let i=1; i<=n; i++) container.innerHTML += `<div style="margin-bottom:5px;"><input type="text" id="name${i}" placeholder="Player ${i}" style="width:90%; padding:8px;"></div>`;
-    }
-    function initMap() {
-        const sat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, attribution: 'Esri' });
-        map = L.map('map', { center: lastPos, zoom: 18, layers: [sat], zoomControl: false });
-    }
-    function startGPS() {
-        if (watchId || !navigator.geolocation) return;
-        watchId = navigator.geolocation.watchPosition(pos => {
-            lastPos = [pos.coords.latitude, pos.coords.longitude];
-            if(userMarker) { userMarker.setLatLng(lastPos); } 
-            else { userMarker = L.circleMarker(lastPos, { radius: 8, color: 'white', fillColor: '#3498db', fillOpacity: 1 }).addTo(map); }
-            if (mapMode === 'follow') map.panTo(lastPos);
-        }, null, { enableHighAccuracy: document.getElementById('setHighAcc').checked });
-    }
-    function stopGPS() { if(watchId) { navigator.geolocation.clearWatch(watchId); watchId = null; } }
-    function setMapMode(m) { mapMode = m; if(m === 'follow') centerOnMe(); }
-    function centerOnMe() { if(lastPos) map.panTo(lastPos); }
-    function updateGPSConfig() { if(document.getElementById('mapPage').classList.contains('active')) { stopGPS(); startGPS(); } }
-
-    drawNameInputs();
-</script>
+<script src="app.js"></script>
 </body>
 </html>
