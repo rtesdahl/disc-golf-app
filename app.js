@@ -83,14 +83,14 @@ function renderTable() {
     sBody.innerHTML = '';
     
     currentGameState.players.forEach((p, i) => {
-        hRow.innerHTML += `<th onclick="saveIndividualPrompt('${p}', ${i+1})">${p}</th>`;
+        // Removed the onclick event for individual archiving
+        hRow.innerHTML += `<th>${p}</th>`;
         fRow.innerHTML += `<td id="tot${i+1}">0</td>`;
     });
     
     WALLER_PARK.holes.forEach((h, idx) => {
         let tr = document.createElement('tr');
         
-        // Unified Par Input with handleParBlur added
         tr.innerHTML = `<td>${h}</td><td>
             <input type="number" class="par-input" id="p-${idx}" value="${currentGameState.pars[idx]}"
                 onfocus="this.select(); setActiveRow(this);"
@@ -103,7 +103,6 @@ function renderTable() {
         
         currentGameState.players.forEach((p, i) => {
             const score = currentGameState.scores[p][idx];
-            // Unified Score Input with handleScoreBlur added
             tr.innerHTML += `<td>
                 <input type="number" class="score-input" data-p="${i+1}" data-h="${idx}" value="${score}" 
                     onfocus="this.select(); setActiveRow(this);" 
@@ -146,7 +145,6 @@ function handleInput(el) {
     }
 }
 
-// NEW: Catch empty score cells on blur
 function handleScoreBlur(el) {
     el.classList.remove('long-press-active');
     if (el.value === "") {
@@ -156,7 +154,6 @@ function handleScoreBlur(el) {
     }
 }
 
-// NEW: Catch empty par cells on blur
 function handleParBlur(idx, el) {
     el.classList.remove('long-press-active');
     if (el.value === "") {
@@ -230,15 +227,6 @@ function saveToHistoryAndReset() {
         currentGameState = null; 
         localStorage.removeItem('dg_active_session');
         location.reload();
-    }
-}
-
-function saveIndividualPrompt(name, idx) {
-    if(confirm(`Archive current round for ${name}?`)) {
-        const hist = JSON.parse(localStorage.getItem('dg_history') || "[]");
-        hist.push({...currentGameState, players: [name], scores: { [name]: currentGameState.scores[name] }, isChanged: false });
-        localStorage.setItem('dg_history', JSON.stringify(hist));
-        alert("Saved to history!");
     }
 }
 
