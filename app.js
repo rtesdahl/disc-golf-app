@@ -52,7 +52,7 @@ function initNewGame() {
         courseId: WALLER_PARK.id, courseName: WALLER_PARK.name,
         startTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         players: playerNames, pars: [...WALLER_PARK.pars], scores: {},
-        isChanged: true // Brand new games automatically archive
+        isChanged: true
     };
     
     playerNames.forEach(p => currentGameState.scores[p] = new Array(WALLER_PARK.holes.length).fill(0));
@@ -81,6 +81,13 @@ function hydrateTable() {
     });
 }
 
+// NEW: JS controlled row highlighting
+function setActiveRow(el) {
+    document.querySelectorAll('#sBody tr').forEach(tr => tr.classList.remove('active-row'));
+    const parentRow = el.closest('tr');
+    if(parentRow) parentRow.classList.add('active-row');
+}
+
 function renderTable() {
     const hRow = document.getElementById('hRow'), fRow = document.getElementById('fRow'), sBody = document.getElementById('sBody');
     hRow.innerHTML = '<th>Hole</th><th>Par</th>';
@@ -94,22 +101,23 @@ function renderTable() {
     
     WALLER_PARK.holes.forEach((h, idx) => {
         let tr = document.createElement('tr');
-        tr.innerHTML = `<td>${h}</td><td class="par-col" id="p-${idx}" onclick="editPar(${idx})">${currentGameState.pars[idx]}</td>`;
+        // Added setActiveRow call to the par editor as well
+        tr.innerHTML = `<td>${h}</td><td class="par-col" id="p-${idx}" onclick="editPar(${idx}); setActiveRow(this);">${currentGameState.pars[idx]}</td>`;
         currentGameState.players.forEach((p, i) => {
             tr.innerHTML += `<td>
                 <input type="number" class="score-input" data-p="${i+1}" data-h="${idx}" placeholder="0" 
-                    onfocus="this.select()" 
+                    onfocus="this.select(); setActiveRow(this);" 
                     ontouchstart="handleTouchStart(this)" 
                     ontouchend="handleTouchEnd(this)" 
                     oninput="handleInput(this)"
-                    onblur="this.classList.remove('long-press-active')">
+                    onblur="this.classList.remove('long-press-active')"
+                    oncontextmenu="return false;">
             </td>`;
         });
         sBody.appendChild(tr);
     });
 }
 
-// --- Option A 2.0: Touch Timer Logic ---
 function handleTouchStart(el) {
     el.dataset.longpress = "false";
     clearTimeout(touchTimer);
@@ -122,6 +130,9 @@ function handleTouchStart(el) {
 
 function handleTouchEnd(el) {
     clearTimeout(touchTimer);
+    if (el.dataset.longpress === "true") {
+        el.focus();
+    }
 }
 
 function handleInput(el) { 
@@ -129,7 +140,6 @@ function handleInput(el) {
     applyColor(el); 
     snapshotState(); 
     
-    // Auto-blur (Fast Mode) if single character AND not long-pressed
     if (el.dataset.longpress !== "true" && el.value.length >= 1) {
         el.blur();
     }
@@ -167,7 +177,6 @@ function calc() {
 
 function saveToHistoryAndReset() {
     if (!currentGameState.isChanged) {
-        // Just viewed, silently discard without archiving
         currentGameState = null;
         localStorage.removeItem('dg_active_session');
         location.reload();
@@ -188,7 +197,8 @@ function editPar(idx) {
     const cell = document.getElementById(`p-${idx}`);
     const cur = cell.innerText;
     cell.innerHTML = `<input type="number" value="${cur}" style="width:35px;" onfocus="this.select()" onblur="savePar(${idx}, this.value)">`;
-    cell.querySelector('input').focus();
+    const input = cell.querySelector('input');
+    input.focus();
 }
 
 function savePar(idx, val) {
@@ -252,7 +262,7 @@ function restoreFromHistory(idx) {
     const reversedIndex = h.length - 1 - idx; 
     if(confirm("Load this game? Current active progress will be overwritten.")) {
         currentGameState = h[reversedIndex];
-        currentGameState.isChanged = false; // Flag as clean until edited
+        currentGameState.isChanged = false; 
         snapshotState();
         showPage('scorePage', document.querySelector('.tab-btn'));
         startRoundUI();
