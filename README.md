@@ -6,11 +6,10 @@ Most disc golf apps are bloated or require too many taps to input a simple score
  2. **Outdoor Readability:** Keeping track of which row you are editing on a massive 30-hole grid woth 8 players in direct sunlight.
  3. **Connection Loss:** Ensuring data is never lost, even if the browser closes or the cell signal drops.
 ## ✨ Key Features
-### ⚡ "Fast Mode" & "Long-Press" Data Entry (Option A 2.0)
+### ⚡ "Fast Mode" & "Long-Press" Data Entry
 The core innovation of this app is its hybrid data-entry UX, designed to make scoring 99% of holes instantaneous, while safely supporting edge cases:
  * **Fast Mode (Single-Tap):** Tap a cell, type a single digit, and the keyboard *instantly* auto-closes. The score is saved, color-coded, and calculated immediately without needing an "Enter" or "Done" button.
  * **Long-Press Mode (Double-Digits):** For scores of 10+, press and hold the cell for 500ms. The cell highlights yellow with a haptic buzz to confirm "Double-Digit Mode" is active. The keyboard remains open to allow multiple keystrokes.
- * **Smart Zeros:** Empty cells are prepopulated with physical 0s (styled in gray) to ensure mobile OS keyboards trigger reliably without layout jumping or copy/paste menu hijacking.
 ### 📊 Live Grid & Sticky Architecture
 Built with a strict Flexbox hierarchy to ensure native-app-like scrolling on mobile browsers:
  * **Sticky Headers & Footers:** Player names stay pinned to the top, and live relative-to-par totals (e.g., 28 (+1)) stay pinned to the bottom while scrolling through the 30-hole grid.
