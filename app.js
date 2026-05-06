@@ -90,27 +90,27 @@ function renderTable() {
     WALLER_PARK.holes.forEach((h, idx) => {
         let tr = document.createElement('tr');
         
-        // Unified Par Input
+        // Unified Par Input with handleParBlur added
         tr.innerHTML = `<td>${h}</td><td>
             <input type="number" class="par-input" id="p-${idx}" value="${currentGameState.pars[idx]}"
                 onfocus="this.select(); setActiveRow(this);"
                 ontouchstart="handleTouchStart(this)"
                 ontouchend="handleTouchEnd(this)"
                 oninput="savePar(${idx}, this)"
-                onblur="this.classList.remove('long-press-active')"
+                onblur="handleParBlur(${idx}, this)"
                 oncontextmenu="return false;">
         </td>`;
         
-        // Unified Score Inputs (Prepopulated with values, not placeholders)
         currentGameState.players.forEach((p, i) => {
             const score = currentGameState.scores[p][idx];
+            // Unified Score Input with handleScoreBlur added
             tr.innerHTML += `<td>
                 <input type="number" class="score-input" data-p="${i+1}" data-h="${idx}" value="${score}" 
                     onfocus="this.select(); setActiveRow(this);" 
                     ontouchstart="handleTouchStart(this)" 
                     ontouchend="handleTouchEnd(this)" 
                     oninput="handleInput(this)"
-                    onblur="this.classList.remove('long-press-active')"
+                    onblur="handleScoreBlur(this)"
                     oncontextmenu="return false;">
             </td>`;
         });
@@ -132,7 +132,7 @@ function handleTouchEnd(el) {
     clearTimeout(touchTimer);
     if (el.dataset.longpress === "true") {
         el.focus();
-        el.select(); // Explicitly selects the physical '0' to trigger mobile keyboard
+        el.select(); 
     }
 }
 
@@ -146,15 +146,32 @@ function handleInput(el) {
     }
 }
 
+// NEW: Catch empty score cells on blur
+function handleScoreBlur(el) {
+    el.classList.remove('long-press-active');
+    if (el.value === "") {
+        el.value = 0;
+        applyColor(el);
+        snapshotState();
+    }
+}
+
+// NEW: Catch empty par cells on blur
+function handleParBlur(idx, el) {
+    el.classList.remove('long-press-active');
+    if (el.value === "") {
+        el.value = 3;
+        savePar(idx, el);
+    }
+}
+
 function applyColor(el) {
     const val = parseInt(el.value) || 0;
-    // Read the par value dynamically from the input element
     const par = parseInt(document.getElementById(`p-${el.dataset.h}`).value) || 3;
     
     el.className = "score-input"; 
     if (el.dataset.longpress === "true") el.classList.add('long-press-active');
     
-    // Idea 1: Handle physical 0s
     if (val === 0) {
         el.classList.add('zero-val');
     } else {
@@ -173,12 +190,10 @@ function savePar(idx, el) {
     currentGameState.pars[idx] = v;
     currentGameState.isChanged = true;
     
-    // Recalculate colors for the entire row based on new par
     document.querySelectorAll(`input.score-input[data-h="${idx}"]`).forEach(inp => applyColor(inp));
     snapshotState();
     calc();
 
-    // Allow Fast-Mode blurring on Par edits too
     if (el.dataset.longpress !== "true" && el.value.length >= 1) {
         el.blur();
     }
@@ -191,7 +206,6 @@ function calc() {
             const v = parseInt(inp.value) || 0;
             if (v > 0) { 
                 act += v; 
-                // Dynamically grab the relative Par from the input field
                 rel += parseInt(document.getElementById(`p-${inp.dataset.h}`).value) || 3; 
             }
         });
