@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -61,17 +60,17 @@
 
         <div id="settingsPage" class="page">
             <div class="settings-content">
-                <h3>Location Settings</h3>
+                <h3>Location & Sharing</h3>
                 <div class="setting-item">
                     <span>High Precision GPS</span>
                     <input type="checkbox" id="setHighAcc" onchange="updateGPSConfig()">
                 </div>
+                <div id="qrcode"></div>
                 <hr>
                 <h3>Game History</h3>
                 <p style="font-size: 0.8rem; color: #666;">Tap a round to reload it into the scorecard.</p>
                 <div id="historyList"></div>
                 <button class="btn-danger" onclick="clearHistory()">Clear All Data</button>
-                <div id="qrcode"></div>
             </div>
         </div>
     </div>
