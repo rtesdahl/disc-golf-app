@@ -1,8 +1,3 @@
-/**
- * Disc Golf Pro: App Logic
- * Persistance, State Management, and Dynamic UI
- */
-
 const WALLER_PARK = {
     id: "waller_27",
     name: "Waller Park",
@@ -51,14 +46,12 @@ function initNewGame() {
     const pCount = document.getElementById('count').value;
     const playerNames = [];
     for(let i=1; i<=pCount; i++) playerNames.push(document.getElementById(`name${i}`).value || `P${i}`);
-
     currentGameState = {
         courseId: WALLER_PARK.id, courseName: WALLER_PARK.name,
         startTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         players: playerNames, pars: [...WALLER_PARK.pars], scores: {}
     };
     playerNames.forEach(p => currentGameState.scores[p] = new Array(WALLER_PARK.holes.length).fill(0));
-    
     startRoundUI();
 }
 
@@ -86,23 +79,15 @@ function hydrateTable() {
 
 function renderTable() {
     const hRow = document.getElementById('hRow'), fRow = document.getElementById('fRow'), sBody = document.getElementById('sBody');
-    
-    // Header Row
     hRow.innerHTML = '<th>Hole</th><th>Par</th>';
-    // Footer Row (Labels occupy 2 columns to align with Hole/Par)
     fRow.innerHTML = '<td colspan="2">TOTAL</td>';
     sBody.innerHTML = '';
-
     currentGameState.players.forEach((p, i) => {
-        // Headers (Names)
         hRow.innerHTML += `<th onclick="saveIndividualPrompt('${p}', ${i+1})">${p}</th>`;
-        // Footers (Live Totals)
         fRow.innerHTML += `<td id="tot${i+1}">0</td>`;
     });
-
     WALLER_PARK.holes.forEach((h, idx) => {
         let tr = document.createElement('tr');
-        // Added class="par-col" to the second cell for the blue tap-to-edit indicator
         tr.innerHTML = `<td>${h}</td><td class="par-col" id="p-${idx}" onclick="editPar(${idx})">${currentGameState.pars[idx]}</td>`;
         currentGameState.players.forEach((p, i) => {
             tr.innerHTML += `<td><input type="number" class="score-input" data-p="${i+1}" data-h="${idx}" placeholder="0" oninput="handleInput(this)"></td>`;
@@ -133,10 +118,7 @@ function calc() {
         let act = 0, rel = 0, pNum = i + 1;
         document.querySelectorAll(`input[data-p="${pNum}"]`).forEach(inp => {
             const v = parseInt(inp.value) || 0;
-            if (v > 0) { 
-                act += v; 
-                rel += parseInt(document.getElementById(`p-${inp.dataset.h}`).innerText); 
-            }
+            if (v > 0) { act += v; rel += parseInt(document.getElementById(`p-${inp.dataset.h}`).innerText); }
         });
         const diff = act - rel;
         const txt = diff === 0 ? "E" : (diff > 0 ? `+${diff}` : diff);
