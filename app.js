@@ -83,7 +83,6 @@ function renderTable() {
     sBody.innerHTML = '';
     
     currentGameState.players.forEach((p, i) => {
-        // Removed the onclick event for individual archiving
         hRow.innerHTML += `<th>${p}</th>`;
         fRow.innerHTML += `<td id="tot${i+1}">0</td>`;
     });
@@ -270,9 +269,9 @@ function renderHistory() {
 
 function restoreFromHistory(idx) {
     const h = JSON.parse(localStorage.getItem('dg_history') || "[]");
-    const reversedIndex = h.length - 1 - idx; 
+    
     if(confirm("Load this game? Current active progress will be overwritten.")) {
-        currentGameState = h[reversedIndex];
+        currentGameState = h[idx];
         currentGameState.isChanged = false; 
         snapshotState();
         showPage('scorePage', document.querySelector('.tab-btn'));
