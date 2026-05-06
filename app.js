@@ -36,7 +36,7 @@ function snapshotState() {
     if (!currentGameState) return;
     currentGameState.players.forEach((p, pIdx) => {
         const pNum = pIdx + 1;
-        document.querySelectorAll(`input[data-p="${pNum}"]`).forEach(inp => {
+        document.querySelectorAll(`input.score-input[data-p="${pNum}"]`).forEach(inp => {
             currentGameState.scores[p][inp.dataset.h] = parseInt(inp.value) || 0;
         });
     });
@@ -63,25 +63,13 @@ function resumeGame() { startRoundUI(); }
 
 function startRoundUI() {
     renderTable();
-    hydrateTable();
+    // Initialize the CSS state for all pre-populated values
+    document.querySelectorAll('.score-input').forEach(inp => applyColor(inp));
     document.getElementById('setupContainer').classList.add('hidden');
     document.getElementById('gameContainer').classList.remove('hidden');
     calc();
 }
 
-function hydrateTable() {
-    currentGameState.players.forEach((p, pIdx) => {
-        const pNum = pIdx + 1;
-        currentGameState.scores[p].forEach((score, hIdx) => {
-            if (score > 0) {
-                const inp = document.querySelector(`input[data-p="${pNum}"][data-h="${hIdx}"]`);
-                if(inp) { inp.value = score; applyColor(inp); }
-            }
-        });
-    });
-}
-
-// NEW: JS controlled row highlighting
 function setActiveRow(el) {
     document.querySelectorAll('#sBody tr').forEach(tr => tr.classList.remove('active-row'));
     const parentRow = el.closest('tr');
@@ -101,11 +89,23 @@ function renderTable() {
     
     WALLER_PARK.holes.forEach((h, idx) => {
         let tr = document.createElement('tr');
-        // Added setActiveRow call to the par editor as well
-        tr.innerHTML = `<td>${h}</td><td class="par-col" id="p-${idx}" onclick="editPar(${idx}); setActiveRow(this);">${currentGameState.pars[idx]}</td>`;
+        
+        // Unified Par Input
+        tr.innerHTML = `<td>${h}</td><td>
+            <input type="number" class="par-input" id="p-${idx}" value="${currentGameState.pars[idx]}"
+                onfocus="this.select(); setActiveRow(this);"
+                ontouchstart="handleTouchStart(this)"
+                ontouchend="handleTouchEnd(this)"
+                oninput="savePar(${idx}, this)"
+                onblur="this.classList.remove('long-press-active')"
+                oncontextmenu="return false;">
+        </td>`;
+        
+        // Unified Score Inputs (Prepopulated with values, not placeholders)
         currentGameState.players.forEach((p, i) => {
+            const score = currentGameState.scores[p][idx];
             tr.innerHTML += `<td>
-                <input type="number" class="score-input" data-p="${i+1}" data-h="${idx}" placeholder="0" 
+                <input type="number" class="score-input" data-p="${i+1}" data-h="${idx}" value="${score}" 
                     onfocus="this.select(); setActiveRow(this);" 
                     ontouchstart="handleTouchStart(this)" 
                     ontouchend="handleTouchEnd(this)" 
@@ -132,6 +132,7 @@ function handleTouchEnd(el) {
     clearTimeout(touchTimer);
     if (el.dataset.longpress === "true") {
         el.focus();
+        el.select(); // Explicitly selects the physical '0' to trigger mobile keyboard
     }
 }
 
@@ -147,11 +148,16 @@ function handleInput(el) {
 
 function applyColor(el) {
     const val = parseInt(el.value) || 0;
-    const par = parseInt(document.getElementById(`p-${el.dataset.h}`).innerText);
-    el.className = "score-input";
+    // Read the par value dynamically from the input element
+    const par = parseInt(document.getElementById(`p-${el.dataset.h}`).value) || 3;
+    
+    el.className = "score-input"; 
     if (el.dataset.longpress === "true") el.classList.add('long-press-active');
     
-    if (val > 0) {
+    // Idea 1: Handle physical 0s
+    if (val === 0) {
+        el.classList.add('zero-val');
+    } else {
         if (val === 1) el.classList.add('ace');
         else if (val <= par - 2) el.classList.add('double-birdie');
         else if (val === par - 1) el.classList.add('birdie');
@@ -162,12 +168,32 @@ function applyColor(el) {
     calc();
 }
 
+function savePar(idx, el) {
+    const v = parseInt(el.value) || 3;
+    currentGameState.pars[idx] = v;
+    currentGameState.isChanged = true;
+    
+    // Recalculate colors for the entire row based on new par
+    document.querySelectorAll(`input.score-input[data-h="${idx}"]`).forEach(inp => applyColor(inp));
+    snapshotState();
+    calc();
+
+    // Allow Fast-Mode blurring on Par edits too
+    if (el.dataset.longpress !== "true" && el.value.length >= 1) {
+        el.blur();
+    }
+}
+
 function calc() {
     currentGameState.players.forEach((p, i) => {
         let act = 0, rel = 0, pNum = i + 1;
-        document.querySelectorAll(`input[data-p="${pNum}"]`).forEach(inp => {
+        document.querySelectorAll(`input.score-input[data-p="${pNum}"]`).forEach(inp => {
             const v = parseInt(inp.value) || 0;
-            if (v > 0) { act += v; rel += parseInt(document.getElementById(`p-${inp.dataset.h}`).innerText); }
+            if (v > 0) { 
+                act += v; 
+                // Dynamically grab the relative Par from the input field
+                rel += parseInt(document.getElementById(`p-${inp.dataset.h}`).value) || 3; 
+            }
         });
         const diff = act - rel;
         const txt = diff === 0 ? "E" : (diff > 0 ? `+${diff}` : diff);
@@ -191,23 +217,6 @@ function saveToHistoryAndReset() {
         localStorage.removeItem('dg_active_session');
         location.reload();
     }
-}
-
-function editPar(idx) {
-    const cell = document.getElementById(`p-${idx}`);
-    const cur = cell.innerText;
-    cell.innerHTML = `<input type="number" value="${cur}" style="width:35px;" onfocus="this.select()" onblur="savePar(${idx}, this.value)">`;
-    const input = cell.querySelector('input');
-    input.focus();
-}
-
-function savePar(idx, val) {
-    const v = parseInt(val) || 3;
-    currentGameState.pars[idx] = v;
-    currentGameState.isChanged = true;
-    document.getElementById(`p-${idx}`).innerText = v;
-    document.querySelectorAll(`input[data-h="${idx}"]`).forEach(inp => applyColor(inp));
-    snapshotState();
 }
 
 function saveIndividualPrompt(name, idx) {
