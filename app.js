@@ -9,12 +9,13 @@ let currentGameState = null;
 let map, userMarker, watchId = null;
 let lastPos = [34.6141, -120.1925];
 let mapMode = 'follow';
+let touchTimer = null;
 
 window.onload = () => {
     checkActiveSession();
     drawNameInputs();
     window.onbeforeunload = (e) => { 
-        if(currentGameState) {
+        if(currentGameState && currentGameState.isChanged) {
             e.preventDefault();
             return "Game in progress. Exit?"; 
         }
@@ -46,11 +47,14 @@ function initNewGame() {
     const pCount = document.getElementById('count').value;
     const playerNames = [];
     for(let i=1; i<=pCount; i++) playerNames.push(document.getElementById(`name${i}`).value || `P${i}`);
+    
     currentGameState = {
         courseId: WALLER_PARK.id, courseName: WALLER_PARK.name,
         startTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        players: playerNames, pars: [...WALLER_PARK.pars], scores: {}
+        players: playerNames, pars: [...WALLER_PARK.pars], scores: {},
+        isChanged: true // Brand new games automatically archive
     };
+    
     playerNames.forEach(p => currentGameState.scores[p] = new Array(WALLER_PARK.holes.length).fill(0));
     startRoundUI();
 }
@@ -82,26 +86,61 @@ function renderTable() {
     hRow.innerHTML = '<th>Hole</th><th>Par</th>';
     fRow.innerHTML = '<td colspan="2">TOTAL</td>';
     sBody.innerHTML = '';
+    
     currentGameState.players.forEach((p, i) => {
         hRow.innerHTML += `<th onclick="saveIndividualPrompt('${p}', ${i+1})">${p}</th>`;
         fRow.innerHTML += `<td id="tot${i+1}">0</td>`;
     });
+    
     WALLER_PARK.holes.forEach((h, idx) => {
         let tr = document.createElement('tr');
         tr.innerHTML = `<td>${h}</td><td class="par-col" id="p-${idx}" onclick="editPar(${idx})">${currentGameState.pars[idx]}</td>`;
         currentGameState.players.forEach((p, i) => {
-            tr.innerHTML += `<td><input type="number" class="score-input" data-p="${i+1}" data-h="${idx}" placeholder="0" oninput="handleInput(this)"></td>`;
+            tr.innerHTML += `<td>
+                <input type="number" class="score-input" data-p="${i+1}" data-h="${idx}" placeholder="0" 
+                    onfocus="this.select()" 
+                    ontouchstart="handleTouchStart(this)" 
+                    ontouchend="handleTouchEnd(this)" 
+                    oninput="handleInput(this)"
+                    onblur="this.classList.remove('long-press-active')">
+            </td>`;
         });
         sBody.appendChild(tr);
     });
 }
 
-function handleInput(el) { applyColor(el); snapshotState(); }
+// --- Option A 2.0: Touch Timer Logic ---
+function handleTouchStart(el) {
+    el.dataset.longpress = "false";
+    clearTimeout(touchTimer);
+    touchTimer = setTimeout(() => {
+        el.dataset.longpress = "true";
+        el.classList.add('long-press-active');
+        if (navigator.vibrate) navigator.vibrate(50);
+    }, 500);
+}
+
+function handleTouchEnd(el) {
+    clearTimeout(touchTimer);
+}
+
+function handleInput(el) { 
+    currentGameState.isChanged = true;
+    applyColor(el); 
+    snapshotState(); 
+    
+    // Auto-blur (Fast Mode) if single character AND not long-pressed
+    if (el.dataset.longpress !== "true" && el.value.length >= 1) {
+        el.blur();
+    }
+}
 
 function applyColor(el) {
     const val = parseInt(el.value) || 0;
     const par = parseInt(document.getElementById(`p-${el.dataset.h}`).innerText);
     el.className = "score-input";
+    if (el.dataset.longpress === "true") el.classList.add('long-press-active');
+    
     if (val > 0) {
         if (val === 1) el.classList.add('ace');
         else if (val <= par - 2) el.classList.add('double-birdie');
@@ -127,6 +166,14 @@ function calc() {
 }
 
 function saveToHistoryAndReset() {
+    if (!currentGameState.isChanged) {
+        // Just viewed, silently discard without archiving
+        currentGameState = null;
+        localStorage.removeItem('dg_active_session');
+        location.reload();
+        return;
+    }
+
     if(confirm("Archive FULL round and reset?")) {
         const h = JSON.parse(localStorage.getItem('dg_history') || "[]");
         h.push(currentGameState);
@@ -140,13 +187,14 @@ function saveToHistoryAndReset() {
 function editPar(idx) {
     const cell = document.getElementById(`p-${idx}`);
     const cur = cell.innerText;
-    cell.innerHTML = `<input type="number" value="${cur}" style="width:35px;" onblur="savePar(${idx}, this.value)">`;
+    cell.innerHTML = `<input type="number" value="${cur}" style="width:35px;" onfocus="this.select()" onblur="savePar(${idx}, this.value)">`;
     cell.querySelector('input').focus();
 }
 
 function savePar(idx, val) {
     const v = parseInt(val) || 3;
     currentGameState.pars[idx] = v;
+    currentGameState.isChanged = true;
     document.getElementById(`p-${idx}`).innerText = v;
     document.querySelectorAll(`input[data-h="${idx}"]`).forEach(inp => applyColor(inp));
     snapshotState();
@@ -155,7 +203,7 @@ function savePar(idx, val) {
 function saveIndividualPrompt(name, idx) {
     if(confirm(`Archive current round for ${name}?`)) {
         const hist = JSON.parse(localStorage.getItem('dg_history') || "[]");
-        hist.push({...currentGameState, players: [name], scores: { [name]: currentGameState.scores[name] }});
+        hist.push({...currentGameState, players: [name], scores: { [name]: currentGameState.scores[name] }, isChanged: false });
         localStorage.setItem('dg_history', JSON.stringify(hist));
         alert("Saved to history!");
     }
@@ -204,6 +252,7 @@ function restoreFromHistory(idx) {
     const reversedIndex = h.length - 1 - idx; 
     if(confirm("Load this game? Current active progress will be overwritten.")) {
         currentGameState = h[reversedIndex];
+        currentGameState.isChanged = false; // Flag as clean until edited
         snapshotState();
         showPage('scorePage', document.querySelector('.tab-btn'));
         startRoundUI();
