@@ -26,24 +26,19 @@ body {
 nav {
     display: flex;
     background: #333;
-    width: 100%;
 }
 
-button.tab-btn {
+.tab-btn {
     flex: 1;
-    width: auto !important; /* Overrides global button */
-    margin: 0 !important;
     padding: 15px 0;
-    background: transparent !important;
+    background: none;
     border: none;
-    border-radius: 0 !important;
-    color: #aaa !important;
+    color: white;
     font-size: 1rem;
 }
 
-button.tab-btn.active {
-    background: var(--primary) !important;
-    color: white !important;
+.tab-btn.active {
+    background: var(--primary);
     font-weight: bold;
 }
 
@@ -63,7 +58,7 @@ button.tab-btn.active {
     display: none !important; 
 }
 
-/* Setup & History Buttons */
+/* Setup & History */
 input[type="text"], input[type="number"] {
     font-size: 1rem;
     padding: 10px;
@@ -73,7 +68,6 @@ input[type="text"], input[type="number"] {
     margin-bottom: 10px;
 }
 
-/* Base button styles for setup page */
 button {
     background: var(--primary);
     color: white;
@@ -111,11 +105,9 @@ table {
 
 th, td {
     border: 1px solid var(--border-color);
-    /* 6px top/bottom restores scroll grab-rails, but still saves ~10px per row */
-    padding: 6px 4px; 
+    padding: 10px;
     text-align: center;
     background: white;
-    vertical-align: middle;
 }
 
 /* Sticky Headers & Footers */
@@ -124,7 +116,6 @@ thead th {
     top: 0;
     background: #eee;
     z-index: 10;
-    padding: 10px 4px; 
 }
 
 tfoot td {
@@ -133,8 +124,6 @@ tfoot td {
     background: #eee;
     z-index: 10;
     font-weight: bold;
-    padding: 10px 4px;
-    border-top: 2px solid #ccc;
 }
 
 /* Active Row */
@@ -149,10 +138,8 @@ tr.active-row input {
 /* Inputs */
 .score-input, .par-input {
     width: 100%;
-    height: 38px; /* Fixed height instead of min-height */
-    padding: 0;
-    margin: 0;
-    line-height: 38px; /* Crucial for vertical centering */
+    padding: 10px;
+    margin-bottom: 0;
     text-align: center;
     font-size: 1.2rem;
     border: 1px solid #ccc;
@@ -161,8 +148,6 @@ tr.active-row input {
     -webkit-user-select: none;
     user-select: none;
     color: #000;
-    /* Tells the mobile OS: allow vertical scroll even if user starts drag on this input */
-    touch-action: pan-y; 
 }
 
 /* Color Coding */
