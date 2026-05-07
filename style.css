@@ -26,19 +26,24 @@ body {
 nav {
     display: flex;
     background: #333;
+    width: 100%;
 }
 
-.tab-btn {
+button.tab-btn {
     flex: 1;
+    width: auto !important; /* Overrides global button */
+    margin: 0 !important;
     padding: 15px 0;
-    background: none;
+    background: transparent !important;
     border: none;
-    color: white;
+    border-radius: 0 !important;
+    color: #aaa !important;
     font-size: 1rem;
 }
 
-.tab-btn.active {
-    background: var(--primary);
+button.tab-btn.active {
+    background: var(--primary) !important;
+    color: white !important;
     font-weight: bold;
 }
 
@@ -58,7 +63,7 @@ nav {
     display: none !important; 
 }
 
-/* Setup & History */
+/* Setup & History Buttons */
 input[type="text"], input[type="number"] {
     font-size: 1rem;
     padding: 10px;
@@ -68,6 +73,7 @@ input[type="text"], input[type="number"] {
     margin-bottom: 10px;
 }
 
+/* Base button styles for setup page */
 button {
     background: var(--primary);
     color: white;
@@ -105,9 +111,11 @@ table {
 
 th, td {
     border: 1px solid var(--border-color);
-    padding: 2px; /* Shrunk from 10px to save vertical space */
+    /* 6px top/bottom restores scroll grab-rails, but still saves ~10px per row */
+    padding: 6px 4px; 
     text-align: center;
     background: white;
+    vertical-align: middle;
 }
 
 /* Sticky Headers & Footers */
@@ -116,7 +124,7 @@ thead th {
     top: 0;
     background: #eee;
     z-index: 10;
-    padding: 10px 2px; /* Kept header padding slightly larger for readability */
+    padding: 10px 4px; 
 }
 
 tfoot td {
@@ -125,7 +133,8 @@ tfoot td {
     background: #eee;
     z-index: 10;
     font-weight: bold;
-    padding: 10px 2px;
+    padding: 10px 4px;
+    border-top: 2px solid #ccc;
 }
 
 /* Active Row */
@@ -140,8 +149,10 @@ tr.active-row input {
 /* Inputs */
 .score-input, .par-input {
     width: 100%;
-    min-height: 40px; /* Ensures a safe 40px touch target even with tight rows */
-    padding: 4px 0;
+    height: 38px; /* Fixed height instead of min-height */
+    padding: 0;
+    margin: 0;
+    line-height: 38px; /* Crucial for vertical centering */
     text-align: center;
     font-size: 1.2rem;
     border: 1px solid #ccc;
@@ -150,7 +161,8 @@ tr.active-row input {
     -webkit-user-select: none;
     user-select: none;
     color: #000;
-    margin: 0;
+    /* Tells the mobile OS: allow vertical scroll even if user starts drag on this input */
+    touch-action: pan-y; 
 }
 
 /* Color Coding */
