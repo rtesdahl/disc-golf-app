@@ -1,4 +1,4 @@
-* { box-sizing: border-box; }
+* { box-sizing: border-box;  }
 html, body { overscroll-behavior-y: contain; position: fixed; overflow: hidden; width: 100%; height: 100dvh; margin: 0; padding: 0; background: #f0f2f5; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
 .container { display: flex; flex-direction: column; height: 100%; max-width: 800px; margin: 0 auto; background: white; }
 
