@@ -9,7 +9,12 @@ let currentGameState = null;
 let map, userMarker, watchId = null;
 let lastPos = [34.6141, -120.1925];
 let mapMode = 'follow';
+
+// Touch Tracking Variables
 let touchTimer = null;
+let touchStartX = 0;
+let touchStartY = 0;
+let isDragging = false;
 
 window.onload = () => {
     checkActiveSession();
@@ -93,8 +98,9 @@ function renderTable() {
         tr.innerHTML = `<td>${h}</td><td>
             <input type="number" class="par-input" id="p-${idx}" value="${currentGameState.pars[idx]}"
                 onfocus="this.select(); setActiveRow(this);"
-                ontouchstart="handleTouchStart(this)"
-                ontouchend="handleTouchEnd(this)"
+                ontouchstart="handleTouchStart(event, this)"
+                ontouchmove="handleTouchMove(event, this)"
+                ontouchend="handleTouchEnd(event, this)"
                 oninput="savePar(${idx}, this)"
                 onblur="handleParBlur(${idx}, this)"
                 oncontextmenu="return false;">
@@ -105,8 +111,9 @@ function renderTable() {
             tr.innerHTML += `<td>
                 <input type="number" class="score-input" data-p="${i+1}" data-h="${idx}" value="${score}" 
                     onfocus="this.select(); setActiveRow(this);" 
-                    ontouchstart="handleTouchStart(this)" 
-                    ontouchend="handleTouchEnd(this)" 
+                    ontouchstart="handleTouchStart(event, this)" 
+                    ontouchmove="handleTouchMove(event, this)"
+                    ontouchend="handleTouchEnd(event, this)" 
                     oninput="handleInput(this)"
                     onblur="handleScoreBlur(this)"
                     oncontextmenu="return false;">
@@ -116,18 +123,45 @@ function renderTable() {
     });
 }
 
-function handleTouchStart(el) {
+function handleTouchStart(e, el) {
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+    isDragging = false;
+    
     el.dataset.longpress = "false";
     clearTimeout(touchTimer);
+    
     touchTimer = setTimeout(() => {
-        el.dataset.longpress = "true";
-        el.classList.add('long-press-active');
-        if (navigator.vibrate) navigator.vibrate(50);
+        if (!isDragging) {
+            el.dataset.longpress = "true";
+            el.classList.add('long-press-active');
+            if (navigator.vibrate) navigator.vibrate(50);
+        }
     }, 500);
 }
 
-function handleTouchEnd(el) {
+function handleTouchMove(e, el) {
+    if (isDragging) return;
+    
+    const moveX = e.touches[0].clientX;
+    const moveY = e.touches[0].clientY;
+    
+    // 10 pixel threshold to allow for natural finger wiggle during a tap
+    if (Math.abs(moveX - touchStartX) > 10 || Math.abs(moveY - touchStartY) > 10) {
+        isDragging = true;
+        clearTimeout(touchTimer);
+        el.dataset.longpress = "false";
+        el.classList.remove('long-press-active');
+    }
+}
+
+function handleTouchEnd(e, el) {
     clearTimeout(touchTimer);
+    
+    if (isDragging) {
+        return; // Let the browser handle the scroll natively
+    }
+    
     if (el.dataset.longpress === "true") {
         el.focus();
         el.select(); 
