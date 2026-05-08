@@ -31,7 +31,10 @@
                     <label>Number of Players: </label>
                     <input type="number" id="count" min="1" max="10" value="1" oninput="drawNameInputs()">
                     <div id="nameInputs"></div>
-                    <button class="btn-start" onclick="initNewGame()">Start Game</button>
+                    <div style="display: flex; gap: 10px; margin-top: 10px;">
+                        <button class="btn-start" style="flex: 1;" onclick="initNewGame()">Start Game</button>
+                        <button class="btn-start" style="flex: 1; background: #8e44ad;" onclick="alert('Scanner coming next!')">Import QR</button>
+                    </div>
                 </div>
             </div>
 
@@ -43,8 +46,9 @@
                         <tfoot><tr id="fRow"></tr></tfoot>
                     </table>
                 </div>
-                <div class="game-footer">
-                    <button class="btn-archive" onclick="saveToHistoryAndReset()">Finish & Archive Round</button>
+                <div class="game-footer" style="display: flex; gap: 10px;">
+                    <button class="btn-share" onclick="generateShareQR()" style="background: #3498db; color: white; padding: 15px; border: none; border-radius: 8px; font-weight: bold; flex: 1; cursor: pointer;">Share Round</button>
+                    <button class="btn-archive" onclick="saveToHistoryAndReset()" style="flex: 1; padding: 15px;">Archive & Reset</button>
                 </div>
             </div>
         </div>
@@ -74,6 +78,13 @@
             </div>
         </div>
     </div>
+</div>
+
+<div id="qrModal" class="hidden" style="position: fixed; top: 0; left: 0; width: 100%; height: 100dvh; background: rgba(0,0,0,0.95); z-index: 3000; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; box-sizing: border-box;">
+    <h2 style="color: white; margin-bottom: 20px;">Scan to Import Game</h2>
+    <div id="modalQRCode" style="background: white; padding: 20px; border-radius: 8px;"></div>
+    <p style="color: #ccc; margin-top: 15px; text-align: center; font-size: 0.9rem;">Present this code to the other players.</p>
+    <button onclick="document.getElementById('qrModal').classList.add('hidden')" style="margin-top: 30px; background: #e74c3c; color: white; padding: 15px 40px; border: none; border-radius: 8px; font-weight: bold; font-size: 1.1rem; cursor: pointer;">Close</button>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
