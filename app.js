@@ -16,6 +16,9 @@ let touchStartX = 0;
 let touchStartY = 0;
 let isDragging = false;
 
+// Scanner Variable
+let html5QrcodeScanner = null;
+
 window.onload = () => {
     checkActiveSession();
     drawNameInputs();
@@ -74,7 +77,6 @@ function resumeGame() { startRoundUI(); }
 
 function startRoundUI() {
     renderTable();
-    // Initialize the CSS state for all pre-populated values
     document.querySelectorAll('.score-input').forEach(inp => applyColor(inp));
     document.getElementById('setupContainer').classList.add('hidden');
     document.getElementById('gameContainer').classList.remove('hidden');
@@ -133,10 +135,8 @@ function handleTouchStart(e, el) {
     touchStartX = e.touches[0].clientX;
     touchStartY = e.touches[0].clientY;
     isDragging = false;
-    
     el.dataset.longpress = "false";
     clearTimeout(touchTimer);
-    
     touchTimer = setTimeout(() => {
         if (!isDragging) {
             el.dataset.longpress = "true";
@@ -148,10 +148,8 @@ function handleTouchStart(e, el) {
 
 function handleTouchMove(e, el) {
     if (isDragging) return;
-    
     const moveX = e.touches[0].clientX;
     const moveY = e.touches[0].clientY;
-    
     if (Math.abs(moveX - touchStartX) > 10 || Math.abs(moveY - touchStartY) > 10) {
         isDragging = true;
         clearTimeout(touchTimer);
@@ -163,7 +161,6 @@ function handleTouchMove(e, el) {
 function handleTouchEnd(e, el) {
     clearTimeout(touchTimer);
     if (isDragging) return;
-    
     if (el.dataset.longpress === "true") {
         el.focus();
         el.select(); 
@@ -175,7 +172,6 @@ function handleInput(el) {
     currentGameState.updatedAt = Date.now();
     applyColor(el); 
     snapshotState(); 
-    
     if (el.dataset.longpress !== "true" && el.value.length >= 1) {
         el.blur();
     }
@@ -201,20 +197,15 @@ function handleParBlur(idx, el) {
 function applyColor(el) {
     const val = parseInt(el.value) || 0;
     const par = parseInt(document.getElementById(`p-${el.dataset.h}`).value) || 3;
-    
     el.className = "score-input"; 
     if (el.dataset.longpress === "true") el.classList.add('long-press-active');
-    
-    if (val === 0) {
-        el.classList.add('zero-val');
-    } else {
-        if (val === 1) el.classList.add('ace');
-        else if (val <= par - 2) el.classList.add('double-birdie');
-        else if (val === par - 1) el.classList.add('birdie');
-        else if (val === par) el.classList.add('par');
-        else if (val === par + 1) el.classList.add('bogey');
-        else if (val >= par + 2) el.classList.add('double-bogey');
-    }
+    if (val === 0) el.classList.add('zero-val');
+    else if (val === 1) el.classList.add('ace');
+    else if (val <= par - 2) el.classList.add('double-birdie');
+    else if (val === par - 1) el.classList.add('birdie');
+    else if (val === par) el.classList.add('par');
+    else if (val === par + 1) el.classList.add('bogey');
+    else if (val >= par + 2) el.classList.add('double-bogey');
     calc();
 }
 
@@ -223,14 +214,10 @@ function savePar(idx, el) {
     currentGameState.pars[idx] = v;
     currentGameState.isChanged = true;
     currentGameState.updatedAt = Date.now();
-    
     document.querySelectorAll(`input.score-input[data-h="${idx}"]`).forEach(inp => applyColor(inp));
     snapshotState();
     calc();
-
-    if (el.dataset.longpress !== "true" && el.value.length >= 1) {
-        el.blur();
-    }
+    if (el.dataset.longpress !== "true" && el.value.length >= 1) el.blur();
 }
 
 function calc() {
@@ -256,7 +243,6 @@ function saveToHistoryAndReset() {
         location.reload();
         return;
     }
-
     if(confirm("Archive FULL round and reset?")) {
         const h = JSON.parse(localStorage.getItem('dg_history') || "[]");
         h.push(currentGameState);
@@ -307,7 +293,6 @@ function renderHistory() {
 
 function restoreFromHistory(idx) {
     const h = JSON.parse(localStorage.getItem('dg_history') || "[]");
-    
     if(confirm("Load this game? Current active progress will be overwritten.")) {
         currentGameState = h[idx];
         currentGameState.isChanged = false; 
@@ -327,39 +312,46 @@ function drawNameInputs() {
 }
 function updateGPSConfig() { if(document.getElementById('mapPage').classList.contains('active')) { stopGPS(); startGPS(); } }
 
-// --- Smart RLE Compression & QR Generation ---
+// --- Smart RLE Compression, QR Generation & Decoding ---
 
 function encodeSmartRLE(arr) {
     let raw = arr.map(v => v.toString(36).toLowerCase()).join('');
     let rle = '';
     let count = 1;
-    
     for (let i = 1; i <= arr.length; i++) {
-        if (arr[i] === arr[i - 1] && count < 35) { // Max base36 is Z (35)
+        if (arr[i] === arr[i - 1] && count < 35) {
             count++;
         } else {
-            // Store count as uppercase, value as lowercase for easy visual debugging
             rle += count.toString(36).toUpperCase() + arr[i - 1].toString(36).toLowerCase();
             count = 1;
         }
     }
-    
-    // Threshold weigh-in
     return rle.length < raw.length ? '*' + rle : raw;
+}
+
+function decodeSmartRLE(encoded) {
+    let arr = [];
+    if (encoded.startsWith('*')) {
+        for (let i = 1; i < encoded.length; i += 2) {
+            let count = parseInt(encoded[i], 36);
+            let val = parseInt(encoded[i+1], 36);
+            for (let c = 0; c < count; c++) arr.push(val);
+        }
+    } else {
+        for (let i = 0; i < encoded.length; i++) {
+            arr.push(parseInt(encoded[i], 36));
+        }
+    }
+    return arr;
 }
 
 function generateShareQR() {
     if (!currentGameState) return;
-    
-    // Patch legacy active games just in case
     if (!currentGameState.id) currentGameState.id = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 15);
     if (!currentGameState.createdAt) currentGameState.createdAt = Date.now();
     if (!currentGameState.updatedAt) currentGameState.updatedAt = Date.now();
     
     const header = "DGP1";
-    const cid = currentGameState.courseId;
-    const players = currentGameState.players.join(',');
-    
     const encPars = encodeSmartRLE(currentGameState.pars);
     const encScores = currentGameState.players.map(p => encodeSmartRLE(currentGameState.scores[p]));
     
@@ -368,22 +360,84 @@ function generateShareQR() {
         currentGameState.id,
         currentGameState.createdAt.toString(36),
         currentGameState.updatedAt.toString(36),
-        cid,
-        players,
+        currentGameState.courseId,
+        currentGameState.players.join(','),
         encPars,
         ...encScores
     ].join('|');
     
-    console.log("QR Payload:", payload);
-    
     const qrContainer = document.getElementById('modalQRCode');
     qrContainer.innerHTML = '';
-    new QRCode(qrContainer, {
-        text: payload,
-        width: 250,
-        height: 250,
-        correctLevel: QRCode.CorrectLevel.L // Keep density as low as possible for scanning
-    });
-    
+    new QRCode(qrContainer, { text: payload, width: 250, height: 250, correctLevel: QRCode.CorrectLevel.L });
     document.getElementById('qrModal').classList.remove('hidden');
+}
+
+function startQRScanner() {
+    document.getElementById('scannerModal').classList.remove('hidden');
+    if (!html5QrcodeScanner) {
+        html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: {width: 250, height: 250} }, false);
+    }
+    html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+}
+
+function stopQRScanner() {
+    if (html5QrcodeScanner) {
+        html5QrcodeScanner.clear().catch(e => console.error(e));
+    }
+    document.getElementById('scannerModal').classList.add('hidden');
+}
+
+function onScanFailure(error) {
+    // Ignore routine scan failures to avoid spamming the console
+}
+
+function onScanSuccess(decodedText) {
+    stopQRScanner();
+    try {
+        if (!decodedText.startsWith("DGP1|")) {
+            alert("Invalid QR format. This doesn't look like a Disc Golf Pro round.");
+            return;
+        }
+        
+        const parts = decodedText.split('|');
+        const players = parts[5].split(',');
+        const pars = decodeSmartRLE(parts[6]);
+        
+        let newGameState = {
+            id: parts[1],
+            createdAt: parseInt(parts[2], 36),
+            updatedAt: parseInt(parts[3], 36),
+            courseId: parts[4],
+            courseName: WALLER_PARK.name, // Will need dynamic lookup if we add more courses
+            startTime: new Date(parseInt(parts[2], 36)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            players: players,
+            pars: pars,
+            scores: {},
+            isChanged: true 
+        };
+
+        players.forEach((p, idx) => {
+            newGameState.scores[p] = decodeSmartRLE(parts[7 + idx]);
+        });
+
+        currentGameState = newGameState;
+        snapshotState();
+
+        // Archive imported game directly to history
+        const h = JSON.parse(localStorage.getItem('dg_history') || "[]");
+        const existingIdx = h.findIndex(g => g.id === currentGameState.id);
+        if (existingIdx > -1) {
+            h[existingIdx] = currentGameState; 
+        } else {
+            h.push(currentGameState);
+        }
+        localStorage.setItem('dg_history', JSON.stringify(h));
+
+        alert("Round successfully imported!");
+        startRoundUI();
+
+    } catch (e) {
+        console.error("Decode error:", e);
+        alert("Failed to read the imported round data.");
+    }
 }
