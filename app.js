@@ -278,7 +278,14 @@ function startGPS() {
 }
 
 function stopGPS() { if(watchId) { navigator.geolocation.clearWatch(watchId); watchId = null; } }
-function setMapMode(m) { mapMode = m; if(m === 'follow') centerOnMe(); }
+
+function setMapMode(m) { 
+    mapMode = m; 
+    document.getElementById('btnFollow').classList.toggle('active', m === 'follow');
+    document.getElementById('btnFree').classList.toggle('active', m === 'free');
+    if(m === 'follow') centerOnMe(); 
+}
+
 function centerOnMe() { if(lastPos && map) map.panTo(lastPos); }
 
 function renderHistory() {
