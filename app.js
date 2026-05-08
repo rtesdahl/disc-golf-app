@@ -54,9 +54,15 @@ function initNewGame() {
     for(let i=1; i<=pCount; i++) playerNames.push(document.getElementById(`name${i}`).value || `P${i}`);
     
     currentGameState = {
-        courseId: WALLER_PARK.id, courseName: WALLER_PARK.name,
+        id: crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 15),
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        courseId: WALLER_PARK.id, 
+        courseName: WALLER_PARK.name,
         startTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        players: playerNames, pars: [...WALLER_PARK.pars], scores: {},
+        players: playerNames, 
+        pars: [...WALLER_PARK.pars], 
+        scores: {},
         isChanged: true
     };
     
@@ -146,7 +152,6 @@ function handleTouchMove(e, el) {
     const moveX = e.touches[0].clientX;
     const moveY = e.touches[0].clientY;
     
-    // 10 pixel threshold to allow for natural finger wiggle during a tap
     if (Math.abs(moveX - touchStartX) > 10 || Math.abs(moveY - touchStartY) > 10) {
         isDragging = true;
         clearTimeout(touchTimer);
@@ -157,10 +162,7 @@ function handleTouchMove(e, el) {
 
 function handleTouchEnd(e, el) {
     clearTimeout(touchTimer);
-    
-    if (isDragging) {
-        return; // Let the browser handle the scroll natively
-    }
+    if (isDragging) return;
     
     if (el.dataset.longpress === "true") {
         el.focus();
@@ -170,6 +172,7 @@ function handleTouchEnd(e, el) {
 
 function handleInput(el) { 
     currentGameState.isChanged = true;
+    currentGameState.updatedAt = Date.now();
     applyColor(el); 
     snapshotState(); 
     
@@ -219,6 +222,7 @@ function savePar(idx, el) {
     const v = parseInt(el.value) || 3;
     currentGameState.pars[idx] = v;
     currentGameState.isChanged = true;
+    currentGameState.updatedAt = Date.now();
     
     document.querySelectorAll(`input.score-input[data-h="${idx}"]`).forEach(inp => applyColor(inp));
     snapshotState();
@@ -322,3 +326,64 @@ function drawNameInputs() {
     for(let i=1; i<=n; i++) c.innerHTML += `<input type="text" id="name${i}" placeholder="Player ${i}" style="width:90%; padding:10px; margin-top:5px;">`;
 }
 function updateGPSConfig() { if(document.getElementById('mapPage').classList.contains('active')) { stopGPS(); startGPS(); } }
+
+// --- Smart RLE Compression & QR Generation ---
+
+function encodeSmartRLE(arr) {
+    let raw = arr.map(v => v.toString(36).toLowerCase()).join('');
+    let rle = '';
+    let count = 1;
+    
+    for (let i = 1; i <= arr.length; i++) {
+        if (arr[i] === arr[i - 1] && count < 35) { // Max base36 is Z (35)
+            count++;
+        } else {
+            // Store count as uppercase, value as lowercase for easy visual debugging
+            rle += count.toString(36).toUpperCase() + arr[i - 1].toString(36).toLowerCase();
+            count = 1;
+        }
+    }
+    
+    // Threshold weigh-in
+    return rle.length < raw.length ? '*' + rle : raw;
+}
+
+function generateShareQR() {
+    if (!currentGameState) return;
+    
+    // Patch legacy active games just in case
+    if (!currentGameState.id) currentGameState.id = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 15);
+    if (!currentGameState.createdAt) currentGameState.createdAt = Date.now();
+    if (!currentGameState.updatedAt) currentGameState.updatedAt = Date.now();
+    
+    const header = "DGP1";
+    const cid = currentGameState.courseId;
+    const players = currentGameState.players.join(',');
+    
+    const encPars = encodeSmartRLE(currentGameState.pars);
+    const encScores = currentGameState.players.map(p => encodeSmartRLE(currentGameState.scores[p]));
+    
+    const payload = [
+        header,
+        currentGameState.id,
+        currentGameState.createdAt.toString(36),
+        currentGameState.updatedAt.toString(36),
+        cid,
+        players,
+        encPars,
+        ...encScores
+    ].join('|');
+    
+    console.log("QR Payload:", payload);
+    
+    const qrContainer = document.getElementById('modalQRCode');
+    qrContainer.innerHTML = '';
+    new QRCode(qrContainer, {
+        text: payload,
+        width: 250,
+        height: 250,
+        correctLevel: QRCode.CorrectLevel.L // Keep density as low as possible for scanning
+    });
+    
+    document.getElementById('qrModal').classList.remove('hidden');
+}
