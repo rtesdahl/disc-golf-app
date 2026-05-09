@@ -16,14 +16,16 @@ html, body { overscroll-behavior-y: contain; position: fixed; overflow: hidden; 
 .game-footer { flex-shrink: 0; padding: 10px 15px; background: white; border-top: 1px solid #ddd; z-index: 50; }
 
 table { border-collapse: collapse; width: 100%; table-layout: fixed; }
-th, td { border: 1px solid #dee2e6; padding: 10px; text-align: center; background: white; }
+/* Shrink general cell padding to save space */
+th, td { border: 1px solid #dee2e6; padding: 4px 2px; text-align: center; background: white; }
 
 th:nth-child(1), td:nth-child(1) { width: 45px; background: #f8f9fa; font-weight: bold; }
 th:nth-child(2), td:nth-child(2) { width: 45px; background: #f8f9fa; }
 th:nth-child(n+3), td:nth-child(n+3) { min-width: 85px; width: auto; }
 
-thead th { position: sticky; top: 0; z-index: 100; background-color: #34495e; color: white; box-shadow: 0 1px 0 #dee2e6; }
-tfoot td { position: sticky; bottom: 0; z-index: 100; background-color: #2c3e50 !important; color: white !important; font-weight: bold; box-shadow: 0 -2px 0 #000; }
+/* Keep headers and footers slightly thicker for readability */
+thead th { position: sticky; top: 0; z-index: 100; background-color: #34495e; color: white; box-shadow: 0 1px 0 #dee2e6; padding: 8px 4px; }
+tfoot td { position: sticky; bottom: 0; z-index: 100; background-color: #2c3e50 !important; color: white !important; font-weight: bold; box-shadow: 0 -2px 0 #000; padding: 8px 4px; }
 
 /* Permanent Par Input Styling */
 .par-input { 
@@ -40,23 +42,32 @@ tbody tr.active-row td { background-color: #bbdefb !important; }
 
 .long-press-active { background-color: #fff9c4 !important; transition: background-color 0.2s ease; }
 
+/* Shrink input vertical padding, but strictly maintain the 95% width for scroll grab-rails */
 .score-input { 
-    width: 95%; padding: 8px 0; text-align: center; font-size: 1.2rem; 
+    width: 95%; padding: 4px 0; text-align: center; font-size: 1.2rem; 
     border: 1px solid #ccc; border-radius: 4px; background: transparent; 
     -webkit-user-select: none; user-select: none; 
-    color: #000; /* Default to black for active scores */
+    color: #000; 
 }
 .score-input:focus { -webkit-user-select: text; user-select: text; }
 
-/* Idea 1: Ghost Zeros via actual 0 values */
+/* --- NORMAL SCORE COLORS --- */
 .score-input.zero-val { color: #aaa; border-color: #ccc; }
-
 .ace { background-color: #ffeb3b !important; color: black; }
 .double-birdie { background-color: #2ecc71 !important; color: white; }
 .birdie { background-color: #a9dfbf !important; }
 .par { background-color: #ffffff !important; }
 .bogey { background-color: #fadbd8 !important; }
 .double-bogey { background-color: #e74c3c !important; color: white; }
+
+/* --- HIGH CONTRAST SCORE COLORS --- */
+.score-input.zero-val-hc { background-color: transparent !important; color: #95a5a6 !important; }
+.score-input.ace-hc { background-color: #8e44ad !important; /* Deep Purple */ color: white !important; font-weight: bold; }
+.score-input.double-birdie-hc { background-color: #117a65 !important; /* Deep Forest Green */ color: white !important; }
+.score-input.birdie-hc { background-color: #27ae60 !important; /* Saturated Green */ color: white !important; }
+.score-input.par-hc { background-color: #ffffff !important; /* Pure White */ color: #2c3e50 !important; /* Dark Slate */ }
+.score-input.bogey-hc { background-color: #e67e22 !important; /* Strong Orange */ color: white !important; }
+.score-input.double-bogey-hc { background-color: #c0392b !important; /* Strong Red */ color: white !important; }
 
 .settings-content { padding: 20px; overflow-y: auto; flex: 1; }
 #qrcode { display: flex; justify-content: center; margin: 20px 0; }
