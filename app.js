@@ -19,7 +19,15 @@ let isDragging = false;
 // Scanner Variable
 let html5QrcodeScanner = null;
 
+// High Contrast State
+let highContrastMode = false;
+
 window.onload = () => {
+    // Load saved contrast preference
+    highContrastMode = localStorage.getItem('dg_high_contrast') === 'true';
+    const hcCheckbox = document.getElementById('setHighContrast');
+    if (hcCheckbox) hcCheckbox.checked = highContrastMode;
+
     checkActiveSession();
     drawNameInputs();
     window.onbeforeunload = (e) => { 
@@ -194,18 +202,28 @@ function handleParBlur(idx, el) {
     }
 }
 
+function toggleHighContrast() {
+    highContrastMode = document.getElementById('setHighContrast').checked;
+    localStorage.setItem('dg_high_contrast', highContrastMode);
+    document.querySelectorAll('.score-input').forEach(inp => applyColor(inp));
+}
+
 function applyColor(el) {
     const val = parseInt(el.value) || 0;
     const par = parseInt(document.getElementById(`p-${el.dataset.h}`).value) || 3;
     el.className = "score-input"; 
     if (el.dataset.longpress === "true") el.classList.add('long-press-active');
-    if (val === 0) el.classList.add('zero-val-hc');
-    else if (val === 1) el.classList.add('ace-hc');
-    else if (val <= par - 2) el.classList.add('double-birdie-hc');
-    else if (val === par - 1) el.classList.add('birdie-hc');
-    else if (val === par) el.classList.add('par-hc');
-    else if (val === par + 1) el.classList.add('bogey-hc');
-    else if (val >= par + 2) el.classList.add('double-bogey-hc');
+    
+    // Determine suffix based on toggle state
+    const hc = highContrastMode ? '-hc' : '';
+
+    if (val === 0) el.classList.add(`zero-val${hc}`);
+    else if (val === 1) el.classList.add(`ace${hc}`);
+    else if (val <= par - 2) el.classList.add(`double-birdie${hc}`);
+    else if (val === par - 1) el.classList.add(`birdie${hc}`);
+    else if (val === par) el.classList.add(`par${hc}`);
+    else if (val === par + 1) el.classList.add(`bogey${hc}`);
+    else if (val >= par + 2) el.classList.add(`double-bogey${hc}`);
     calc();
 }
 
