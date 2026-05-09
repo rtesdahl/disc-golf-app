@@ -51,14 +51,23 @@ tbody tr.active-row td { background-color: #bbdefb !important; }
 }
 .score-input:focus { -webkit-user-select: text; user-select: text; }
 
+/* --- NORMAL SCORE COLORS --- */
 .score-input.zero-val { color: #aaa; border-color: #ccc; }
-
 .ace { background-color: #ffeb3b !important; color: black; }
 .double-birdie { background-color: #2ecc71 !important; color: white; }
 .birdie { background-color: #a9dfbf !important; }
 .par { background-color: #ffffff !important; }
 .bogey { background-color: #fadbd8 !important; }
 .double-bogey { background-color: #e74c3c !important; color: white; }
+
+/* --- HIGH CONTRAST SCORE COLORS --- */
+.score-input.zero-val-hc { background-color: transparent !important; color: #95a5a6 !important; }
+.score-input.ace-hc { background-color: #8e44ad !important; /* Deep Purple */ color: white !important; font-weight: bold; }
+.score-input.double-birdie-hc { background-color: #117a65 !important; /* Deep Forest Green */ color: white !important; }
+.score-input.birdie-hc { background-color: #27ae60 !important; /* Saturated Green */ color: white !important; }
+.score-input.par-hc { background-color: #ffffff !important; /* Pure White */ color: #2c3e50 !important; /* Dark Slate */ }
+.score-input.bogey-hc { background-color: #e67e22 !important; /* Strong Orange */ color: white !important; }
+.score-input.double-bogey-hc { background-color: #c0392b !important; /* Strong Red */ color: white !important; }
 
 .settings-content { padding: 20px; overflow-y: auto; flex: 1; }
 #qrcode { display: flex; justify-content: center; margin: 20px 0; }
