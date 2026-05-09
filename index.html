@@ -85,10 +85,11 @@
                 </div>
                 <div id="qrcode"></div>
                 <hr>
-                <h3>Game History</h3>
+                <h3>Game History & Data</h3>
                 <p style="font-size: 0.8rem; color: #666;">Tap a round to reload it into the scorecard.</p>
                 <div id="historyList"></div>
-                <button class="btn-danger" onclick="clearHistory()">Clear All Data</button>
+                <button class="btn-danger" onclick="clearHistory()" style="margin-bottom: 10px;">Clear All Data</button>
+                <button class="btn-share" onclick="exportTeeData()" style="width: 100%; padding: 15px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">Export Tee Coordinates (CSV)</button>
             </div>
         </div>
     </div>
