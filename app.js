@@ -16,6 +16,9 @@ let touchStartX = 0;
 let touchStartY = 0;
 let isDragging = false;
 
+// Hole Tee Tracking Variables
+let holeTouchTimer = null;
+
 // Scanner Variable
 let html5QrcodeScanner = null;
 
@@ -111,7 +114,12 @@ function renderTable() {
     WALLER_PARK.holes.forEach((h, idx) => {
         let tr = document.createElement('tr');
         
-        tr.innerHTML = `<td>${h}</td><td>
+        tr.innerHTML = `<td data-h="${h}" 
+            style="user-select: none; cursor: pointer;"
+            ontouchstart="handleHoleTouchStart(event, this)" 
+            ontouchmove="handleHoleTouchMove(event, this)" 
+            ontouchend="handleHoleTouchEnd(event, this)"
+            oncontextmenu="return false;">${h}</td><td>
             <input type="number" class="par-input" id="p-${idx}" value="${currentGameState.pars[idx]}"
                 onfocus="this.select(); setActiveRow(this);"
                 ontouchstart="handleTouchStart(event, this)"
@@ -139,6 +147,7 @@ function renderTable() {
     });
 }
 
+// --- SCORE INPUT TOUCH LOGIC ---
 function handleTouchStart(e, el) {
     touchStartX = e.touches[0].clientX;
     touchStartY = e.touches[0].clientY;
@@ -173,6 +182,86 @@ function handleTouchEnd(e, el) {
         el.focus();
         el.select(); 
     }
+}
+
+// --- HOLE TEE LOGGING TOUCH LOGIC ---
+function handleHoleTouchStart(e, el) {
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+    isDragging = false;
+    clearTimeout(holeTouchTimer);
+    el.classList.add('long-press-active');
+    holeTouchTimer = setTimeout(() => {
+        if (!isDragging) {
+            logTeeLocation(el.dataset.h, el);
+        }
+    }, 500);
+}
+
+function handleHoleTouchMove(e, el) {
+    if (isDragging) return;
+    const moveX = e.touches[0].clientX;
+    const moveY = e.touches[0].clientY;
+    if (Math.abs(moveX - touchStartX) > 10 || Math.abs(moveY - touchStartY) > 10) {
+        isDragging = true;
+        clearTimeout(holeTouchTimer);
+        el.classList.remove('long-press-active');
+    }
+}
+
+function handleHoleTouchEnd(e, el) {
+    clearTimeout(holeTouchTimer);
+    el.classList.remove('long-press-active');
+}
+
+function logTeeLocation(hole, el) {
+    if (navigator.vibrate) navigator.vibrate([50, 100, 50]); // Double buzz feedback
+    el.classList.remove('long-press-active');
+    
+    // Flash green to confirm to the user
+    const originalBg = el.style.backgroundColor;
+    el.style.backgroundColor = '#2ecc71';
+    el.style.color = 'white';
+    setTimeout(() => {
+        el.style.backgroundColor = originalBg;
+        el.style.color = '';
+    }, 1000);
+
+    const record = {
+        courseId: currentGameState.courseId,
+        hole: hole,
+        lat: lastPos[0],
+        lng: lastPos[1],
+        timestamp: new Date().toISOString()
+    };
+    
+    const coords = JSON.parse(localStorage.getItem('dg_tee_coords') || '[]');
+    coords.push(record);
+    localStorage.setItem('dg_tee_coords', JSON.stringify(coords));
+    console.log("Logged Tee Pad:", record);
+}
+
+function exportTeeData() {
+    const coords = JSON.parse(localStorage.getItem('dg_tee_coords') || '[]');
+    if (coords.length === 0) {
+        alert("No tee coordinates have been logged yet.");
+        return;
+    }
+    
+    let csv = "CourseID,Hole,Latitude,Longitude,Timestamp\n";
+    coords.forEach(c => {
+        csv += `${c.courseId},${c.hole},${c.lat},${c.lng},${c.timestamp}\n`;
+    });
+    
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `dg_tee_coords_${Date.now()}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
 }
 
 function handleInput(el) { 
