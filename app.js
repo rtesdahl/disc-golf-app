@@ -199,13 +199,13 @@ function applyColor(el) {
     const par = parseInt(document.getElementById(`p-${el.dataset.h}`).value) || 3;
     el.className = "score-input"; 
     if (el.dataset.longpress === "true") el.classList.add('long-press-active');
-    if (val === 0) el.classList.add('zero-val');
-    else if (val === 1) el.classList.add('ace');
-    else if (val <= par - 2) el.classList.add('double-birdie');
-    else if (val === par - 1) el.classList.add('birdie');
-    else if (val === par) el.classList.add('par');
-    else if (val === par + 1) el.classList.add('bogey');
-    else if (val >= par + 2) el.classList.add('double-bogey');
+    if (val === 0) el.classList.add('zero-val-hc');
+    else if (val === 1) el.classList.add('ace-hc');
+    else if (val <= par - 2) el.classList.add('double-birdie-hc');
+    else if (val === par - 1) el.classList.add('birdie-hc');
+    else if (val === par) el.classList.add('par-hc');
+    else if (val === par + 1) el.classList.add('bogey-hc');
+    else if (val >= par + 2) el.classList.add('double-bogey-hc');
     calc();
 }
 
