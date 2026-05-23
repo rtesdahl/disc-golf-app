@@ -16,10 +16,21 @@ let touchStartX = 0;
 let touchStartY = 0;
 let isDragging = false;
 
+// Hole Tee Tracking Variables
+let holeTouchTimer = null;
+
 // Scanner Variable
 let html5QrcodeScanner = null;
 
+// High Contrast State
+let highContrastMode = false;
+
 window.onload = () => {
+    // Load saved contrast preference
+    highContrastMode = localStorage.getItem('dg_high_contrast') === 'true';
+    const hcCheckbox = document.getElementById('setHighContrast');
+    if (hcCheckbox) hcCheckbox.checked = highContrastMode;
+
     checkActiveSession();
     drawNameInputs();
     window.onbeforeunload = (e) => { 
@@ -103,7 +114,12 @@ function renderTable() {
     WALLER_PARK.holes.forEach((h, idx) => {
         let tr = document.createElement('tr');
         
-        tr.innerHTML = `<td>${h}</td><td>
+        tr.innerHTML = `<td data-h="${h}" 
+            style="user-select: none; cursor: pointer;"
+            ontouchstart="handleHoleTouchStart(event, this)" 
+            ontouchmove="handleHoleTouchMove(event, this)" 
+            ontouchend="handleHoleTouchEnd(event, this)"
+            oncontextmenu="return false;">${h}</td><td>
             <input type="number" class="par-input" id="p-${idx}" value="${currentGameState.pars[idx]}"
                 onfocus="this.select(); setActiveRow(this);"
                 ontouchstart="handleTouchStart(event, this)"
@@ -131,6 +147,7 @@ function renderTable() {
     });
 }
 
+// --- SCORE INPUT TOUCH LOGIC ---
 function handleTouchStart(e, el) {
     touchStartX = e.touches[0].clientX;
     touchStartY = e.touches[0].clientY;
@@ -167,6 +184,162 @@ function handleTouchEnd(e, el) {
     }
 }
 
+// --- HOLE TEE LOGGING TOUCH LOGIC ---
+function handleHoleTouchStart(e, el) {
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+    isDragging = false;
+    clearTimeout(holeTouchTimer);
+    el.classList.add('long-press-active');
+    holeTouchTimer = setTimeout(() => {
+        if (!isDragging) {
+            logTeeLocation(el.dataset.h, el);
+        }
+    }, 500);
+}
+
+function handleHoleTouchMove(e, el) {
+    if (isDragging) return;
+    const moveX = e.touches[0].clientX;
+    const moveY = e.touches[0].clientY;
+    if (Math.abs(moveX - touchStartX) > 10 || Math.abs(moveY - touchStartY) > 10) {
+        isDragging = true;
+        clearTimeout(holeTouchTimer);
+        el.classList.remove('long-press-active');
+    }
+}
+
+function handleHoleTouchEnd(e, el) {
+    clearTimeout(holeTouchTimer);
+    el.classList.remove('long-press-active');
+}
+
+function logTeeLocation(hole, el) {
+    if (navigator.vibrate) navigator.vibrate(50); 
+    el.classList.remove('long-press-active');
+    
+    const originalBg = el.style.backgroundColor;
+    const originalColor = el.style.color;
+    
+    // 1. Initial State: Red (> 50m / Acquiring)
+    el.style.backgroundColor = '#c0392b'; 
+    el.style.color = 'white';
+
+    if (!navigator.geolocation) {
+        alert("Geolocation not supported.");
+        el.style.backgroundColor = originalBg;
+        el.style.color = originalColor;
+        return;
+    }
+
+    let tempWatchId = null;
+    let fallbackTimeout = null;
+    let bestPos = null;
+    
+    const TARGET_ACCURACY = 10; 
+    const MAX_WAIT_TIME = 10000; 
+
+    const saveAndCleanup = (finalPos) => {
+        if (tempWatchId) navigator.geolocation.clearWatch(tempWatchId);
+        if (fallbackTimeout) clearTimeout(fallbackTimeout);
+
+        if (finalPos) {
+            const record = {
+                courseId: currentGameState.courseId,
+                hole: hole,
+                lat: finalPos.coords.latitude,
+                lng: finalPos.coords.longitude,
+                accuracy: Math.round(finalPos.coords.accuracy),
+                timestamp: new Date().toISOString()
+            };
+            
+            const coords = JSON.parse(localStorage.getItem('dg_tee_coords') || '[]');
+            coords.push(record);
+            localStorage.setItem('dg_tee_coords', JSON.stringify(coords));
+            console.log(`Tee ${hole} Logged. Accuracy: ${record.accuracy}m`);
+
+            if (navigator.vibrate) navigator.vibrate([50, 100, 50]); 
+            
+            // Final Success State: Green hold for 5 seconds
+            el.style.backgroundColor = '#27ae60'; 
+            el.style.color = 'white';
+            
+            setTimeout(() => {
+                el.style.backgroundColor = originalBg;
+                el.style.color = originalColor;
+            }, 5000);
+
+        } else {
+            // Complete failure (flash dark gray)
+            el.style.backgroundColor = '#34495e'; 
+            setTimeout(() => {
+                el.style.backgroundColor = originalBg;
+                el.style.color = originalColor;
+            }, 1500);
+        }
+    };
+
+    // 2. Spin up the high-precision stream
+    tempWatchId = navigator.geolocation.watchPosition(
+        (pos) => {
+            const acc = pos.coords.accuracy;
+            
+            if (!bestPos || acc < bestPos.coords.accuracy) {
+                bestPos = pos;
+            }
+            
+            // 3. Progressive Visual Feedback
+            if (acc <= TARGET_ACCURACY) {
+                saveAndCleanup(pos); 
+            } else if (acc <= 25) {
+                el.style.backgroundColor = '#f1c40f'; 
+                el.style.color = 'black'; 
+            } else if (acc <= 50) {
+                el.style.backgroundColor = '#e67e22'; 
+                el.style.color = 'white';
+            }
+        },
+        (err) => {
+            console.error("Tee Log GPS Error:", err);
+            if (err.code === 1) saveAndCleanup(null); 
+        },
+        { 
+            enableHighAccuracy: true, 
+            timeout: 5000, 
+            maximumAge: 0 
+        }
+    );
+
+    // 4. Fallback timer
+    fallbackTimeout = setTimeout(() => {
+        console.warn("Tee GPS Timeout. Saving best available location.");
+        saveAndCleanup(bestPos); 
+    }, MAX_WAIT_TIME);
+}
+
+function exportTeeData() {
+    const coords = JSON.parse(localStorage.getItem('dg_tee_coords') || '[]');
+    if (coords.length === 0) {
+        alert("No tee coordinates have been logged yet.");
+        return;
+    }
+    
+    let csv = "CourseID,Hole,Latitude,Longitude,Accuracy(m),Timestamp\n";
+    coords.forEach(c => {
+        csv += `${c.courseId},${c.hole},${c.lat},${c.lng},${c.accuracy},${c.timestamp}\n`;
+    });
+    
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `dg_tee_coords_${Date.now()}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
 function handleInput(el) { 
     currentGameState.isChanged = true;
     currentGameState.updatedAt = Date.now();
@@ -194,18 +367,28 @@ function handleParBlur(idx, el) {
     }
 }
 
+function toggleHighContrast() {
+    highContrastMode = document.getElementById('setHighContrast').checked;
+    localStorage.setItem('dg_high_contrast', highContrastMode);
+    document.querySelectorAll('.score-input').forEach(inp => applyColor(inp));
+}
+
 function applyColor(el) {
     const val = parseInt(el.value) || 0;
     const par = parseInt(document.getElementById(`p-${el.dataset.h}`).value) || 3;
     el.className = "score-input"; 
     if (el.dataset.longpress === "true") el.classList.add('long-press-active');
-    if (val === 0) el.classList.add('zero-val-hc');
-    else if (val === 1) el.classList.add('ace-hc');
-    else if (val <= par - 2) el.classList.add('double-birdie-hc');
-    else if (val === par - 1) el.classList.add('birdie-hc');
-    else if (val === par) el.classList.add('par-hc');
-    else if (val === par + 1) el.classList.add('bogey-hc');
-    else if (val >= par + 2) el.classList.add('double-bogey-hc');
+    
+    // Determine suffix based on toggle state
+    const hc = highContrastMode ? '-hc' : '';
+
+    if (val === 0) el.classList.add(`zero-val${hc}`);
+    else if (val === 1) el.classList.add(`ace${hc}`);
+    else if (val <= par - 2) el.classList.add(`double-birdie${hc}`);
+    else if (val === par - 1) el.classList.add(`birdie${hc}`);
+    else if (val === par) el.classList.add(`par${hc}`);
+    else if (val === par + 1) el.classList.add(`bogey${hc}`);
+    else if (val >= par + 2) el.classList.add(`double-bogey${hc}`);
     calc();
 }
 
@@ -244,207 +427,4 @@ function saveToHistoryAndReset() {
         return;
     }
     if(confirm("Archive FULL round and reset?")) {
-        const h = JSON.parse(localStorage.getItem('dg_history') || "[]");
-        h.push(currentGameState);
-        localStorage.setItem('dg_history', JSON.stringify(h));
-        currentGameState = null; 
-        localStorage.removeItem('dg_active_session');
-        location.reload();
-    }
-}
-
-function showPage(id, btn) {
-    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    document.getElementById(id).classList.add('active');
-    btn.classList.add('active');
-    if (id === 'mapPage') { if(!map) initMap(); startGPS(); setTimeout(() => map.invalidateSize(), 200); } else stopGPS();
-    if (id === 'settingsPage') { renderHistory(); if(!document.querySelector('#qrcode img')) new QRCode(document.getElementById("qrcode"), { text: window.location.href, width: 180, height: 180 }); }
-}
-
-function initMap() {
-    const sat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, attribution: 'Esri' });
-    map = L.map('map', { center: lastPos, zoom: 18, layers: [sat], zoomControl: false });
-}
-
-function startGPS() {
-    if (watchId || !navigator.geolocation) return;
-    watchId = navigator.geolocation.watchPosition(pos => {
-        lastPos = [pos.coords.latitude, pos.coords.longitude];
-        if(!userMarker) userMarker = L.circleMarker(lastPos, { radius: 8, color: 'white', fillColor: '#3498db', fillOpacity: 1 }).addTo(map);
-        else userMarker.setLatLng(lastPos);
-        if (mapMode === 'follow') map.panTo(lastPos);
-    }, null, { enableHighAccuracy: document.getElementById('setHighAcc')?.checked || true });
-}
-
-function stopGPS() { if(watchId) { navigator.geolocation.clearWatch(watchId); watchId = null; } }
-
-function setMapMode(m) { 
-    mapMode = m; 
-    document.getElementById('btnFollow').classList.toggle('active', m === 'follow');
-    document.getElementById('btnFree').classList.toggle('active', m === 'free');
-    if(m === 'follow') centerOnMe(); 
-}
-
-function centerOnMe() { if(lastPos && map) map.panTo(lastPos); }
-
-function renderHistory() {
-    const h = JSON.parse(localStorage.getItem('dg_history') || "[]");
-    document.getElementById('historyList').innerHTML = h.map((game, i) => `
-        <div class="history-card" onclick="restoreFromHistory(${i})">
-            <strong>${game.courseName}</strong> - ${game.players.join(', ')}<br>
-            <small>${game.startTime}</small>
-        </div>
-    `).reverse().join('');
-}
-
-function restoreFromHistory(idx) {
-    const h = JSON.parse(localStorage.getItem('dg_history') || "[]");
-    if(confirm("Load this game? Current active progress will be overwritten.")) {
-        currentGameState = h[idx];
-        currentGameState.isChanged = false; 
-        snapshotState();
-        showPage('scorePage', document.querySelector('.tab-btn'));
-        startRoundUI();
-    }
-}
-
-function clearHistory() { if(confirm("Clear all?")) { localStorage.clear(); location.reload(); } }
-function confirmNewGame() { if(confirm("Wipe active game?")) { currentGameState = null; localStorage.removeItem('dg_active_session'); location.reload(); } }
-
-function drawNameInputs() {
-    const n = document.getElementById('count').value, c = document.getElementById('nameInputs');
-    c.innerHTML = "";
-    for(let i=1; i<=n; i++) c.innerHTML += `<input type="text" id="name${i}" placeholder="Player ${i}" style="width:90%; padding:10px; margin-top:5px;">`;
-}
-function updateGPSConfig() { if(document.getElementById('mapPage').classList.contains('active')) { stopGPS(); startGPS(); } }
-
-// --- Smart RLE Compression, QR Generation & Decoding ---
-
-function encodeSmartRLE(arr) {
-    let raw = arr.map(v => v.toString(36).toLowerCase()).join('');
-    let rle = '';
-    let count = 1;
-    for (let i = 1; i <= arr.length; i++) {
-        if (arr[i] === arr[i - 1] && count < 35) {
-            count++;
-        } else {
-            rle += count.toString(36).toUpperCase() + arr[i - 1].toString(36).toLowerCase();
-            count = 1;
-        }
-    }
-    return rle.length < raw.length ? '*' + rle : raw;
-}
-
-function decodeSmartRLE(encoded) {
-    let arr = [];
-    if (encoded.startsWith('*')) {
-        for (let i = 1; i < encoded.length; i += 2) {
-            let count = parseInt(encoded[i], 36);
-            let val = parseInt(encoded[i+1], 36);
-            for (let c = 0; c < count; c++) arr.push(val);
-        }
-    } else {
-        for (let i = 0; i < encoded.length; i++) {
-            arr.push(parseInt(encoded[i], 36));
-        }
-    }
-    return arr;
-}
-
-function generateShareQR() {
-    if (!currentGameState) return;
-    if (!currentGameState.id) currentGameState.id = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 15);
-    if (!currentGameState.createdAt) currentGameState.createdAt = Date.now();
-    if (!currentGameState.updatedAt) currentGameState.updatedAt = Date.now();
-    
-    const header = "DGP1";
-    const encPars = encodeSmartRLE(currentGameState.pars);
-    const encScores = currentGameState.players.map(p => encodeSmartRLE(currentGameState.scores[p]));
-    
-    const payload = [
-        header,
-        currentGameState.id,
-        currentGameState.createdAt.toString(36),
-        currentGameState.updatedAt.toString(36),
-        currentGameState.courseId,
-        currentGameState.players.join(','),
-        encPars,
-        ...encScores
-    ].join('|');
-    
-    const qrContainer = document.getElementById('modalQRCode');
-    qrContainer.innerHTML = '';
-    new QRCode(qrContainer, { text: payload, width: 250, height: 250, correctLevel: QRCode.CorrectLevel.L });
-    document.getElementById('qrModal').classList.remove('hidden');
-}
-
-function startQRScanner() {
-    document.getElementById('scannerModal').classList.remove('hidden');
-    if (!html5QrcodeScanner) {
-        html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: {width: 250, height: 250} }, false);
-    }
-    html5QrcodeScanner.render(onScanSuccess, onScanFailure);
-}
-
-function stopQRScanner() {
-    if (html5QrcodeScanner) {
-        html5QrcodeScanner.clear().catch(e => console.error(e));
-    }
-    document.getElementById('scannerModal').classList.add('hidden');
-}
-
-function onScanFailure(error) {
-    // Ignore routine scan failures to avoid spamming the console
-}
-
-function onScanSuccess(decodedText) {
-    stopQRScanner();
-    try {
-        if (!decodedText.startsWith("DGP1|")) {
-            alert("Invalid QR format. This doesn't look like a Disc Golf Pro round.");
-            return;
-        }
-        
-        const parts = decodedText.split('|');
-        const players = parts[5].split(',');
-        const pars = decodeSmartRLE(parts[6]);
-        
-        let newGameState = {
-            id: parts[1],
-            createdAt: parseInt(parts[2], 36),
-            updatedAt: parseInt(parts[3], 36),
-            courseId: parts[4],
-            courseName: WALLER_PARK.name, // Will need dynamic lookup if we add more courses
-            startTime: new Date(parseInt(parts[2], 36)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            players: players,
-            pars: pars,
-            scores: {},
-            isChanged: true 
-        };
-
-        players.forEach((p, idx) => {
-            newGameState.scores[p] = decodeSmartRLE(parts[7 + idx]);
-        });
-
-        currentGameState = newGameState;
-        snapshotState();
-
-        // Archive imported game directly to history
-        const h = JSON.parse(localStorage.getItem('dg_history') || "[]");
-        const existingIdx = h.findIndex(g => g.id === currentGameState.id);
-        if (existingIdx > -1) {
-            h[existingIdx] = currentGameState; 
-        } else {
-            h.push(currentGameState);
-        }
-        localStorage.setItem('dg_history', JSON.stringify(h));
-
-        alert("Round successfully imported!");
-        startRoundUI();
-
-    } catch (e) {
-        console.error("Decode error:", e);
-        alert("Failed to read the imported round data.");
-    }
-}
+        const h = JSON
